@@ -23,6 +23,9 @@ final class ConfigStore: ObservableObject {
 
         if let loaded = Self.load(from: self.fileURL, decoder: self.decoder) {
             self.current = Self.migratedConfig(from: loaded)
+        } else if let legacy = Self.load(from: Self.legacyConfigURL(), decoder: self.decoder) {
+            self.current = Self.migratedConfig(from: legacy)
+            save()
         } else {
             self.current = DefaultProfiles.makeConfig()
             save()
@@ -104,7 +107,7 @@ final class ConfigStore: ObservableObject {
             let data = try encoder.encode(current)
             try data.write(to: fileURL, options: [.atomic])
         } catch {
-            NSLog("GestureBridge failed to save config: \(error.localizedDescription)")
+            NSLog("Gestur failed to save config: \(error.localizedDescription)")
         }
     }
 
@@ -144,6 +147,17 @@ final class ConfigStore: ObservableObject {
     }
 
     private static func defaultConfigURL() -> URL {
+        let supportURL = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0]
+
+        return supportURL
+            .appendingPathComponent("Gestur", isDirectory: true)
+            .appendingPathComponent("config.json")
+    }
+
+    private static func legacyConfigURL() -> URL {
         let supportURL = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask

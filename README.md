@@ -1,6 +1,6 @@
-# GestureBridge
+# Gestur
 
-GestureBridge is a native macOS menu-bar utility prototype for browser mouse gestures.
+Gestur is a native macOS menu-bar utility prototype for browser mouse gestures.
 
 It listens for right-button drag gestures with a CoreGraphics event tap, matches the frontmost app against enabled browser profiles, and dispatches browser actions as synthetic keyboard shortcuts.
 
@@ -13,7 +13,7 @@ swift build
 ## Run
 
 ```sh
-swift run GestureBridge
+swift run Gestur
 ```
 
 The app runs as a menu-bar utility and opens the permissions screen if Accessibility or Input Monitoring is missing.
@@ -22,10 +22,10 @@ The app runs as a menu-bar utility and opens the permissions screen if Accessibi
 
 ```sh
 Scripts/build-app.sh
-open dist/GestureBridge.app
+open dist/Gestur.app
 ```
 
-Use the bundled app when testing launch-at-login. `swift run GestureBridge` is useful during development, but macOS login-item registration expects a real `.app` bundle.
+Use the bundled app when testing launch-at-login. `swift run Gestur` is useful during development, but macOS login-item registration expects a real `.app` bundle.
 
 The app icon is generated from `Assets/AppIcon.svg` during packaging. The menu-bar icon uses `Assets/MenuBarIconTemplate.svg`, which macOS treats as a template image so it adapts to light and dark menu bars.
 
@@ -41,7 +41,7 @@ To submit a signed app for notarization with an existing notarytool keychain pro
 
 ```sh
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-NOTARIZE_PROFILE="gesturebridge-notary" \
+NOTARIZE_PROFILE="gestur-notary" \
 Scripts/build-app.sh
 ```
 
@@ -52,7 +52,7 @@ The script signs with hardened runtime, verifies the signature, creates a zip ar
 This machine's Command Line Tools install does not include `XCTest`, so the project includes a plain Swift validation runner:
 
 ```sh
-swift run GestureBridgeValidation
+swift run GesturValidation
 ```
 
 It covers gesture token recognition, profile matching, shortcut key mapping, default-config migration, and config import/export.
@@ -72,7 +72,7 @@ Use the record button in a gesture row to draw a gesture in the recording pad in
 
 ## Permissions
 
-GestureBridge needs:
+Gestur needs:
 
 - Accessibility, to send browser keyboard shortcuts.
 - Input Monitoring, to observe mouse input while browsers are frontmost.

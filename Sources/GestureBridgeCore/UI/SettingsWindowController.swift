@@ -29,7 +29,7 @@ final class SettingsWindowController {
                 backing: .buffered,
                 defer: false
             )
-            window.title = "GestureBridge Settings"
+            window.title = "Gestur Settings"
             window.center()
             window.isReleasedWhenClosed = false
             self.window = window

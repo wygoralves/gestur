@@ -5,15 +5,15 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>GestureBridge</string>
+    <string>Gestur</string>
     <key>CFBundleIconFile</key>
-    <string>GestureBridge</string>
+    <string>Gestur</string>
     <key>CFBundleIdentifier</key>
-    <string>com.gesturebridge.GestureBridge</string>
+    <string>com.gestur.Gestur</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>GestureBridge</string>
+    <string>Gestur</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -25,6 +25,6 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 GestureBridge.</string>
+    <string>Copyright © 2026 Gestur.</string>
 </dict>
 </plist>

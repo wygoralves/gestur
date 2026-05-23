@@ -14,7 +14,7 @@ enum GestureBridgeValidation {
         validateConfigImportExport()
 
         if failures.isEmpty {
-            print("GestureBridge validation passed.")
+            print("Gestur validation passed.")
         } else {
             for failure in failures {
                 fputs("Validation failure: \(failure)\n", stderr)

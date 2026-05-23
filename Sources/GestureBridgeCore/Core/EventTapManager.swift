@@ -8,7 +8,7 @@ enum EventTapError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .couldNotCreateTap:
-            return "GestureBridge could not create the macOS event tap."
+            return "Gestur could not create the macOS event tap."
         }
     }
 }

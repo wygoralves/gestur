@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
-  <title id="title">GestureBridge app icon</title>
+  <title id="title">Gestur app icon</title>
   <desc id="desc">A glowing bridge-like mouse gesture path over a deep rounded square.</desc>
   <defs>
     <linearGradient id="background" x1="160" y1="112" x2="864" y2="912" gradientUnits="userSpaceOnUse">

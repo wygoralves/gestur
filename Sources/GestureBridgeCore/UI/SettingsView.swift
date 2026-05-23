@@ -84,7 +84,7 @@ private struct SettingsSidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("GestureBridge")
+                Text("Gestur")
                     .font(.system(size: 18, weight: .semibold))
                 Text("Browser mouse gestures")
                     .font(.system(size: 12))
@@ -139,7 +139,7 @@ private struct GeneralSettingsView: View {
         ) {
             SettingsSection(title: "Runtime") {
                 ToggleRow(
-                    title: "Enable GestureBridge",
+                    title: "Enable mouse gestures",
                     subtitle: "Turn global browser gestures on or off.",
                     isOn: $configStore.current.enabled
                 )
@@ -180,14 +180,14 @@ private struct GeneralSettingsView: View {
                 DisabledPickerRow(
                     title: "Trigger",
                     value: MouseButton.right.displayName,
-                    subtitle: "Right-button drag is the active MVP trigger."
+                    subtitle: "Right-button drag is the active trigger."
                 )
 
                 Divider()
 
                 ToggleRow(
                     title: "Browser-only mode",
-                    subtitle: "GestureBridge only acts in enabled browser profiles.",
+                    subtitle: "Gestur only acts in enabled browser profiles.",
                     isOn: $configStore.current.browserOnlyMode
                 )
                 .disabled(true)
@@ -265,7 +265,7 @@ private struct GeneralSettingsView: View {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
         panel.canCreateDirectories = true
-        panel.nameFieldStringValue = "GestureBridgeConfig.json"
+        panel.nameFieldStringValue = "GesturConfig.json"
 
         guard panel.runModal() == .OK,
               let url = panel.url
@@ -312,7 +312,7 @@ private struct LaunchAtLoginRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Launch at login")
                     .font(.system(size: 13, weight: .medium))
-                Text(controller.launchAtLoginStatus == .unavailable ? "Build and run the .app bundle before enabling this." : "Start GestureBridge automatically after signing in.")
+                Text(controller.launchAtLoginStatus == .unavailable ? "Build and run the .app bundle before enabling this." : "Start Gestur automatically after signing in.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
@@ -383,12 +383,12 @@ struct PermissionView: View {
     var body: some View {
         SettingsPage(
             title: "Permissions",
-            subtitle: "macOS requires explicit approval before GestureBridge can observe gestures or send shortcuts."
+            subtitle: "macOS requires explicit approval before Gestur can observe gestures or send shortcuts."
         ) {
             SettingsSection(title: "Required access") {
                 PermissionRow(
                     title: "Accessibility",
-                    subtitle: "Allows GestureBridge to send browser keyboard shortcuts.",
+                    subtitle: "Allows Gestur to send browser keyboard shortcuts.",
                     status: controller.permissions.accessibility,
                     actionTitle: "Open Accessibility",
                     action: permissionManager.openAccessibilitySettings
@@ -398,7 +398,7 @@ struct PermissionView: View {
 
                 PermissionRow(
                     title: "Input Monitoring",
-                    subtitle: "Allows GestureBridge to observe mouse movement while another app is frontmost.",
+                    subtitle: "Allows Gestur to observe mouse movement while another app is frontmost.",
                     status: controller.permissions.inputMonitoring,
                     actionTitle: "Open Input Monitoring",
                     action: permissionManager.openInputMonitoringSettings
@@ -787,7 +787,7 @@ private struct DiagnosticsView: View {
 
         SettingsPage(
             title: "Diagnostics",
-            subtitle: "Inspect what GestureBridge sees while testing browsers and gestures."
+            subtitle: "Inspect what Gestur sees while testing browsers and gestures."
         ) {
             SettingsSection(title: "Current state") {
                 DiagnosticRow(label: "Event tap", value: snapshot.eventTapState)

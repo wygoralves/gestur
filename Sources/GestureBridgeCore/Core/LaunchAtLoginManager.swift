@@ -67,7 +67,7 @@ enum LaunchAtLoginError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .requiresAppBundle:
-            return "Launch at login requires running GestureBridge from a bundled .app."
+            return "Launch at login requires running Gestur from a bundled .app."
         }
     }
 }

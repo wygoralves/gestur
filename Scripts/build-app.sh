@@ -3,13 +3,13 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIGURATION="${CONFIGURATION:-release}"
-APP_NAME="GestureBridge"
+APP_NAME="Gestur"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
-ICONSET_DIR="$DIST_DIR/GestureBridge.iconset"
+ICONSET_DIR="$DIST_DIR/Gestur.iconset"
 ARCHIVE_PATH="$DIST_DIR/$APP_NAME.zip"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 SIGN_ENTITLEMENTS="${SIGN_ENTITLEMENTS:-$ROOT_DIR/Packaging/Entitlements.plist}"
@@ -52,7 +52,7 @@ if command -v rsvg-convert >/dev/null 2>&1; then
     rsvg-convert -w 512 -h 512 "$ROOT_DIR/Assets/AppIcon.svg" -o "$ICONSET_DIR/icon_512x512.png"
     rsvg-convert -w 1024 -h 1024 "$ROOT_DIR/Assets/AppIcon.svg" -o "$ICONSET_DIR/icon_512x512@2x.png"
 
-    iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/GestureBridge.icns"
+    iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/Gestur.icns"
     rm -rf "$ICONSET_DIR"
 else
     echo "warning: rsvg-convert not found; app bundle will include SVG sources but no .icns file" >&2

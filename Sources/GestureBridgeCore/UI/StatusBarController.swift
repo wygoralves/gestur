@@ -31,7 +31,7 @@ final class StatusBarController: NSObject {
         let currentProfileName = configStore.profileName(for: currentBundleId)
 
         let enabledItem = NSMenuItem(
-            title: configStore.current.enabled ? "GestureBridge: Enabled" : "GestureBridge: Disabled",
+            title: "Enable Mouse Gestures",
             action: #selector(toggleEnabled),
             keyEquivalent: ""
         )
@@ -82,38 +82,6 @@ final class StatusBarController: NSObject {
         settingsItem.target = self
         menu.addItem(settingsItem)
 
-        let permissionsItem = NSMenuItem(
-            title: "Permissions...",
-            action: #selector(openPermissions),
-            keyEquivalent: ""
-        )
-        permissionsItem.target = self
-        menu.addItem(permissionsItem)
-
-        let gesturesItem = NSMenuItem(
-            title: "Edit Gestures...",
-            action: #selector(openGestures),
-            keyEquivalent: ""
-        )
-        gesturesItem.target = self
-        menu.addItem(gesturesItem)
-
-        let diagnosticsItem = NSMenuItem(
-            title: "Diagnostics...",
-            action: #selector(openDiagnostics),
-            keyEquivalent: ""
-        )
-        diagnosticsItem.target = self
-        menu.addItem(diagnosticsItem)
-
-        let learnItem = NSMenuItem(
-            title: "Learn Current App...",
-            action: #selector(learnCurrentApp),
-            keyEquivalent: ""
-        )
-        learnItem.target = self
-        menu.addItem(learnItem)
-
         menu.addItem(.separator())
         let quitItem = NSMenuItem(
             title: "Quit",
@@ -143,13 +111,13 @@ final class StatusBarController: NSObject {
         else {
             return NSImage(
                 systemSymbolName: "arrow.triangle.2.circlepath",
-                accessibilityDescription: "GestureBridge"
+                accessibilityDescription: "Gestur"
             )
         }
 
         image.isTemplate = true
         image.size = NSSize(width: 18, height: 18)
-        image.accessibilityDescription = "GestureBridge"
+        image.accessibilityDescription = "Gestur"
         return image
     }
 
@@ -178,32 +146,6 @@ final class StatusBarController: NSObject {
     @objc private func openSettings() {
         controller.refresh()
         settingsWindowController.show(selecting: .general)
-    }
-
-    @objc private func openPermissions() {
-        controller.refresh()
-        settingsWindowController.show(selecting: .permissions)
-    }
-
-    @objc private func openGestures() {
-        controller.refresh()
-        settingsWindowController.show(selecting: .gestures)
-    }
-
-    @objc private func openDiagnostics() {
-        controller.refresh()
-        settingsWindowController.show(selecting: .diagnostics)
-    }
-
-    @objc private func learnCurrentApp() {
-        if let bundleId = frontmostAppProvider.frontmostBundleId() {
-            configStore.addCurrentApp(
-                bundleId: bundleId,
-                name: frontmostAppProvider.frontmostAppName()
-            )
-        }
-
-        rebuildMenu()
     }
 
     @objc private func disableForCurrentApp(_ sender: NSMenuItem) {
