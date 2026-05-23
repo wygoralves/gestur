@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">GestureBridge app icon</title>
+  <desc id="desc">A glowing bridge-like mouse gesture path over a deep rounded square.</desc>
+  <defs>
+    <linearGradient id="background" x1="160" y1="112" x2="864" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="0.48" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#84cc16"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(720 292) rotate(126) scale(672 590)">
+      <stop stop-color="#ecfeff" stop-opacity="0.86"/>
+      <stop offset="0.34" stop-color="#22d3ee" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#020617" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gesture" x1="242" y1="694" x2="774" y2="264" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ecfccb"/>
+      <stop offset="0.5" stop-color="#67e8f9"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="softShadow" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="26" stdDeviation="30" flood-color="#020617" flood-opacity="0.35"/>
+    </filter>
+    <filter id="lineGlow" x="-45%" y="-45%" width="190%" height="190%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="#67e8f9" flood-opacity="0.72"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="36" flood-color="#a3e635" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="226" fill="url(#background)"/>
+  <rect width="1024" height="1024" rx="226" fill="url(#glow)"/>
+  <path d="M164 846C282 724 254 480 458 432c122-29 213 49 311-27 42-32 72-77 91-131" fill="none" stroke="#ecfeff" stroke-opacity="0.2" stroke-width="34" stroke-linecap="round"/>
+
+  <g filter="url(#softShadow)">
+    <path d="M280 708V516c0-102 83-185 185-185h224" fill="none" stroke="#f8fafc" stroke-opacity="0.88" stroke-width="62" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M280 708V516c0-102 83-185 185-185h224" fill="none" stroke="url(#gesture)" stroke-width="38" stroke-linecap="round" stroke-linejoin="round" filter="url(#lineGlow)"/>
+    <path d="M650 232l116 99-116 99" fill="none" stroke="#f8fafc" stroke-width="62" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M650 232l116 99-116 99" fill="none" stroke="url(#gesture)" stroke-width="38" stroke-linecap="round" stroke-linejoin="round" filter="url(#lineGlow)"/>
+  </g>
+
+  <circle cx="280" cy="708" r="76" fill="#f8fafc" filter="url(#softShadow)"/>
+  <circle cx="280" cy="708" r="42" fill="#0f766e"/>
+  <circle cx="280" cy="708" r="22" fill="#ecfeff"/>
+
+  <path d="M244 753c-16-19-25-44-25-72V516c0-135 110-245 246-245h254" fill="none" stroke="#020617" stroke-opacity="0.18" stroke-width="18" stroke-linecap="round"/>
+  <path d="M188 158c74-46 169-70 284-70 244 0 397 133 397 133" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="20" stroke-linecap="round"/>
+</svg>
