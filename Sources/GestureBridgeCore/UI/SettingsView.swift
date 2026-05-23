@@ -410,6 +410,10 @@ struct PermissionView: View {
                     controller.refresh(promptForAccessibility: true)
                 }
 
+                Button("Request Input Monitoring") {
+                    controller.requestInputMonitoring()
+                }
+
                 Button("Recheck permissions") {
                     controller.refresh()
                 }

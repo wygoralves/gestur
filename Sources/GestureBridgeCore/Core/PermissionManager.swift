@@ -46,6 +46,11 @@ final class PermissionManager {
         }
     }
 
+    @discardableResult
+    func requestInputMonitoring() -> Bool {
+        IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+    }
+
     func openAccessibilitySettings() {
         openPrivacyPane(anchor: "Privacy_Accessibility")
     }

@@ -65,6 +65,11 @@ final class GestureBridgeController: ObservableObject {
         }
     }
 
+    func requestInputMonitoring() {
+        _ = permissionManager.requestInputMonitoring()
+        refresh()
+    }
+
     func stop() {
         eventTapManager.stop()
         eventTapRunning = false
