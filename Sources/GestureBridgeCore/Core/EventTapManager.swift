@@ -22,19 +22,22 @@ final class EventTapManager {
     private let actionDispatcher: ActionDispatching
     private let configStore: ConfigStore
     private let overlayController: GestureOverlayControlling?
+    private let diagnosticsStore: DiagnosticsStore
 
     init(
         recognizer: GestureRecognizer,
         frontmostAppProvider: FrontmostAppProvider,
         actionDispatcher: ActionDispatching,
         configStore: ConfigStore,
-        overlayController: GestureOverlayControlling? = nil
+        overlayController: GestureOverlayControlling? = nil,
+        diagnosticsStore: DiagnosticsStore
     ) {
         self.recognizer = recognizer
         self.frontmostAppProvider = frontmostAppProvider
         self.actionDispatcher = actionDispatcher
         self.configStore = configStore
         self.overlayController = overlayController
+        self.diagnosticsStore = diagnosticsStore
     }
 
     var isRunning: Bool {
@@ -67,6 +70,7 @@ final class EventTapManager {
         }
 
         tap = createdTap
+        diagnosticsStore.updateEventTapState("Running")
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, createdTap, 0)
 
         if let runLoopSource {
@@ -87,6 +91,7 @@ final class EventTapManager {
 
         runLoopSource = nil
         tap = nil
+        diagnosticsStore.updateEventTapState("Stopped")
     }
 
     private static let eventTapCallback: CGEventTapCallBack = { _, type, event, refcon in
@@ -103,6 +108,7 @@ final class EventTapManager {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
 
+            manager.diagnosticsStore.updateEventTapState("Re-enabled after \(type.diagnosticName)")
             return Unmanaged.passUnretained(event)
         }
 
@@ -118,11 +124,25 @@ final class EventTapManager {
 
         guard config.enabled else {
             hideOverlay()
+            updateDiagnostics(
+                type: type,
+                currentBundleId: frontmostAppProvider.frontmostBundleId(),
+                decision: "Pass-through: disabled",
+                snapshot: nil,
+                action: nil
+            )
             return Unmanaged.passUnretained(event)
         }
 
         guard config.trigger.button == .right else {
             hideOverlay()
+            updateDiagnostics(
+                type: type,
+                currentBundleId: frontmostAppProvider.frontmostBundleId(),
+                decision: "Pass-through: unsupported trigger",
+                snapshot: nil,
+                action: nil
+            )
             return Unmanaged.passUnretained(event)
         }
 
@@ -139,14 +159,30 @@ final class EventTapManager {
                   config.isEnabledForBundleId(unwrappedBundleId)
             else {
                 hideOverlay()
+                updateDiagnostics(
+                    type: type,
+                    currentBundleId: currentBundleId,
+                    decision: "Pass-through: no enabled profile",
+                    snapshot: nil,
+                    action: nil
+                )
                 return Unmanaged.passUnretained(event)
             }
 
             bundleId = unwrappedBundleId
         }
 
+        let previousSnapshot = recognizer.activeSnapshot
         let decision = recognizer.handle(type: type, event: event, bundleId: bundleId)
+        let currentSnapshot = recognizer.activeSnapshot ?? previousSnapshot
         updateOverlayIfNeeded(type: type, config: config)
+        updateDiagnostics(
+            type: type,
+            currentBundleId: bundleId,
+            decision: decision.diagnosticName,
+            snapshot: currentSnapshot,
+            action: decision.action
+        )
 
         switch decision {
         case .passThrough:
@@ -206,9 +242,74 @@ final class EventTapManager {
         }
     }
 
+    private func updateDiagnostics(
+        type: CGEventType,
+        currentBundleId: String?,
+        decision: String,
+        snapshot: GestureOverlaySnapshot?,
+        action: GestureAction?
+    ) {
+        let profileName = currentBundleId.flatMap { configStore.current.profile(for: $0)?.name }
+
+        diagnosticsStore.updateCurrentApp(
+            bundleId: currentBundleId,
+            appName: frontmostAppProvider.frontmostAppName(),
+            profileName: profileName
+        )
+        diagnosticsStore.updateEvent(
+            type: type.diagnosticName,
+            decision: decision,
+            gestureToken: snapshot?.token,
+            actionLabel: snapshot?.actionLabel,
+            actionDescription: action?.displayText
+        )
+    }
+
     private static func eventMask(for types: [CGEventType]) -> CGEventMask {
         types.reduce(CGEventMask(0)) { mask, type in
             mask | (CGEventMask(1) << type.rawValue)
         }
+    }
+}
+
+private extension CGEventType {
+    var diagnosticName: String {
+        switch self {
+        case .rightMouseDown:
+            return "Right mouse down"
+        case .rightMouseDragged:
+            return "Right mouse dragged"
+        case .rightMouseUp:
+            return "Right mouse up"
+        case .tapDisabledByTimeout:
+            return "Tap disabled by timeout"
+        case .tapDisabledByUserInput:
+            return "Tap disabled by user input"
+        default:
+            return "Event \(rawValue)"
+        }
+    }
+}
+
+private extension GestureDecision {
+    var diagnosticName: String {
+        switch self {
+        case .passThrough:
+            return "Pass-through"
+        case .swallow:
+            return "Swallow"
+        case .dispatch:
+            return "Dispatch action"
+        case .replayRightClick:
+            return "Replay right-click"
+        }
+    }
+
+    var action: GestureAction? {
+        if case .dispatch(let action) = self {
+            return action
+        }
+
+        return nil
     }
 }

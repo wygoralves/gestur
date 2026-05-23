@@ -17,6 +17,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         let profileMatcher = ProfileMatcher(configStore: configStore)
+        let diagnosticsStore = DiagnosticsStore()
         let recognizer = GestureRecognizer(
             configStore: configStore,
             profileMatcher: profileMatcher
@@ -28,13 +29,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             frontmostAppProvider: frontmostAppProvider,
             actionDispatcher: actionDispatcher,
             configStore: configStore,
-            overlayController: overlayWindowController
+            overlayController: overlayWindowController,
+            diagnosticsStore: diagnosticsStore
         )
         let controller = GestureBridgeController(
             configStore: configStore,
             permissionManager: permissionManager,
             eventTapManager: eventTapManager,
-            launchAtLoginManager: LaunchAtLoginManager()
+            launchAtLoginManager: LaunchAtLoginManager(),
+            diagnosticsStore: diagnosticsStore
         )
         let settingsWindowController = SettingsWindowController(
             configStore: configStore,

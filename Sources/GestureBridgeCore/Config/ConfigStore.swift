@@ -33,6 +33,22 @@ final class ConfigStore: ObservableObject {
         current = DefaultProfiles.makeConfig()
     }
 
+    func exportConfig(to destinationURL: URL) throws {
+        try FileManager.default.createDirectory(
+            at: destinationURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        let data = try encoder.encode(current)
+        try data.write(to: destinationURL, options: [.atomic])
+    }
+
+    func importConfig(from sourceURL: URL) throws {
+        let data = try Data(contentsOf: sourceURL)
+        let imported = try decoder.decode(AppConfig.self, from: data)
+        current = Self.migratedConfig(from: imported)
+    }
+
     func addCurrentApp(bundleId: String, name: String?) {
         guard !bundleId.isEmpty else { return }
 

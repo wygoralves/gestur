@@ -98,6 +98,14 @@ final class StatusBarController: NSObject {
         gesturesItem.target = self
         menu.addItem(gesturesItem)
 
+        let diagnosticsItem = NSMenuItem(
+            title: "Diagnostics...",
+            action: #selector(openDiagnostics),
+            keyEquivalent: ""
+        )
+        diagnosticsItem.target = self
+        menu.addItem(diagnosticsItem)
+
         let learnItem = NSMenuItem(
             title: "Learn Current App...",
             action: #selector(learnCurrentApp),
@@ -180,6 +188,11 @@ final class StatusBarController: NSObject {
     @objc private func openGestures() {
         controller.refresh()
         settingsWindowController.show(selecting: .gestures)
+    }
+
+    @objc private func openDiagnostics() {
+        controller.refresh()
+        settingsWindowController.show(selecting: .diagnostics)
     }
 
     @objc private func learnCurrentApp() {

@@ -11,6 +11,7 @@ enum GestureBridgeValidation {
         validateProfileMatching()
         validateShortcutMapping()
         validateConfigMigration()
+        validateConfigImportExport()
 
         if failures.isEmpty {
             print("GestureBridge validation passed.")
@@ -100,6 +101,26 @@ enum GestureBridgeValidation {
         expect(migratedStore.current.defaultsRevision == 2, "Config migration updates defaults revision")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "D")?.label == "Close tab", "Config migration installs down close")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "U")?.label == "New tab", "Config migration installs up open")
+    }
+
+    private static func validateConfigImportExport() {
+        let sourceURL = temporaryConfigURL()
+        let exportURL = temporaryConfigURL()
+        let importedURL = temporaryConfigURL()
+
+        let sourceStore = ConfigStore(fileURL: sourceURL)
+        sourceStore.current.profiles[0].name = "Custom Chromium"
+
+        do {
+            try sourceStore.exportConfig(to: exportURL)
+
+            let importedStore = ConfigStore(fileURL: importedURL)
+            try importedStore.importConfig(from: exportURL)
+
+            expect(importedStore.current.profiles[0].name == "Custom Chromium", "Config import/export preserves profile edits")
+        } catch {
+            failures.append("Config import/export threw: \(error.localizedDescription)")
+        }
     }
 
     private static func token(

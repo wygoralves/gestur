@@ -11,17 +11,20 @@ final class GestureBridgeController: ObservableObject {
     private let permissionManager: PermissionManager
     private let eventTapManager: EventTapManager
     private let launchAtLoginManager: LaunchAtLoginManager
+    let diagnosticsStore: DiagnosticsStore
 
     init(
         configStore: ConfigStore,
         permissionManager: PermissionManager,
         eventTapManager: EventTapManager,
-        launchAtLoginManager: LaunchAtLoginManager
+        launchAtLoginManager: LaunchAtLoginManager,
+        diagnosticsStore: DiagnosticsStore
     ) {
         self.configStore = configStore
         self.permissionManager = permissionManager
         self.eventTapManager = eventTapManager
         self.launchAtLoginManager = launchAtLoginManager
+        self.diagnosticsStore = diagnosticsStore
         self.permissions = permissionManager.snapshot()
         self.launchAtLoginStatus = launchAtLoginManager.status()
     }
@@ -29,10 +32,15 @@ final class GestureBridgeController: ObservableObject {
     func refresh(promptForAccessibility: Bool = false) {
         permissions = permissionManager.snapshot(promptForAccessibility: promptForAccessibility)
         launchAtLoginStatus = launchAtLoginManager.status()
+        diagnosticsStore.updatePermissions(
+            permissions,
+            launchAtLoginStatus: launchAtLoginStatus
+        )
 
         guard configStore.current.enabled else {
             eventTapManager.stop()
             eventTapRunning = false
+            diagnosticsStore.updateEventTapState("Stopped: disabled")
             lastError = nil
             return
         }
@@ -40,6 +48,7 @@ final class GestureBridgeController: ObservableObject {
         guard permissions.canRunEventTap else {
             eventTapManager.stop()
             eventTapRunning = false
+            diagnosticsStore.updateEventTapState("Stopped: missing permissions")
             lastError = "Accessibility and Input Monitoring permissions are required before gestures can run."
             return
         }
@@ -47,9 +56,11 @@ final class GestureBridgeController: ObservableObject {
         do {
             try eventTapManager.start()
             eventTapRunning = eventTapManager.isRunning
+            diagnosticsStore.updateEventTapState(eventTapRunning ? "Running" : "Stopped")
             lastError = nil
         } catch {
             eventTapRunning = false
+            diagnosticsStore.updateEventTapState("Error")
             lastError = error.localizedDescription
         }
     }
@@ -57,6 +68,7 @@ final class GestureBridgeController: ObservableObject {
     func stop() {
         eventTapManager.stop()
         eventTapRunning = false
+        diagnosticsStore.updateEventTapState("Stopped")
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

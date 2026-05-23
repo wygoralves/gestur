@@ -1,9 +1,12 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general = "General"
     case gestures = "Gestures"
     case profiles = "Profiles"
+    case diagnostics = "Diagnostics"
     case permissions = "Permissions"
 
     var id: String { rawValue }
@@ -16,6 +19,8 @@ enum SettingsTab: String, CaseIterable, Identifiable {
             return "point.3.connected.trianglepath.dotted"
         case .profiles:
             return "globe"
+        case .diagnostics:
+            return "waveform.path.ecg"
         case .permissions:
             return "lock.shield"
         }
@@ -50,6 +55,13 @@ struct SettingsView: View {
                         ProfilesView(
                             configStore: configStore,
                             frontmostAppProvider: frontmostAppProvider
+                        )
+                    case .diagnostics:
+                        DiagnosticsView(
+                            controller: controller,
+                            diagnosticsStore: controller.diagnosticsStore,
+                            frontmostAppProvider: frontmostAppProvider,
+                            configStore: configStore
                         )
                     case .permissions:
                         PermissionView(
@@ -118,6 +130,7 @@ private struct SidebarButtonStyle: ButtonStyle {
 private struct GeneralSettingsView: View {
     @ObservedObject var configStore: ConfigStore
     @ObservedObject var controller: GestureBridgeController
+    @State private var configMessage: String?
 
     var body: some View {
         SettingsPage(
@@ -210,6 +223,31 @@ private struct GeneralSettingsView: View {
                 )
             }
 
+            SettingsSection(title: "Configuration") {
+                HStack(alignment: .center, spacing: 12) {
+                    RowText(
+                        title: "Import or export settings",
+                        subtitle: "Back up gesture profiles as JSON or bring a saved profile set back in."
+                    )
+
+                    Spacer()
+
+                    Button("Import...") {
+                        importConfig()
+                    }
+
+                    Button("Export...") {
+                        exportConfig()
+                    }
+                }
+
+                if let configMessage {
+                    Text(configMessage)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             HStack {
                 Button("Recheck status") {
                     controller.refresh()
@@ -220,6 +258,47 @@ private struct GeneralSettingsView: View {
                     controller.refresh()
                 }
             }
+        }
+    }
+
+    private func exportConfig() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "GestureBridgeConfig.json"
+
+        guard panel.runModal() == .OK,
+              let url = panel.url
+        else {
+            return
+        }
+
+        do {
+            try configStore.exportConfig(to: url)
+            configMessage = "Exported config to \(url.lastPathComponent)."
+        } catch {
+            configMessage = "Export failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func importConfig() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        guard panel.runModal() == .OK,
+              let url = panel.url
+        else {
+            return
+        }
+
+        do {
+            try configStore.importConfig(from: url)
+            controller.refresh()
+            configMessage = "Imported config from \(url.lastPathComponent)."
+        } catch {
+            configMessage = "Import failed: \(error.localizedDescription)"
         }
     }
 }
@@ -499,6 +578,7 @@ private struct GestureRulesView: View {
                         ForEach(profile.wrappedValue.rules.indices, id: \.self) { index in
                             RuleEditorRow(
                                 rule: profile.rules[index],
+                                recognitionConfig: configStore.current.recognition,
                                 onDelete: {
                                     profile.wrappedValue.rules.remove(at: index)
                                 }
@@ -575,7 +655,9 @@ private struct RuleHeader: View {
 
 private struct RuleEditorRow: View {
     @Binding var rule: GestureRule
+    let recognitionConfig: RecognitionConfig
     let onDelete: () -> Void
+    @State private var isRecordingGesture = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -591,6 +673,14 @@ private struct RuleEditorRow: View {
             ShortcutEditor(action: $rule.action)
 
             Button {
+                isRecordingGesture = true
+            } label: {
+                Image(systemName: "record.circle")
+            }
+            .buttonStyle(.borderless)
+            .help("Record gesture")
+
+            Button {
                 onDelete()
             } label: {
                 Image(systemName: "trash")
@@ -599,6 +689,12 @@ private struct RuleEditorRow: View {
             .help("Delete rule")
         }
         .padding(.vertical, 8)
+        .sheet(isPresented: $isRecordingGesture) {
+            GestureRecorderSheet(
+                gestureToken: $rule.gesture,
+                recognitionConfig: recognitionConfig
+            )
+        }
     }
 }
 
@@ -673,6 +769,211 @@ private struct SettingsPage<Content: View>: View {
 
             content
         }
+    }
+}
+
+private struct DiagnosticsView: View {
+    @ObservedObject var controller: GestureBridgeController
+    @ObservedObject var diagnosticsStore: DiagnosticsStore
+    let frontmostAppProvider: FrontmostAppProvider
+    let configStore: ConfigStore
+
+    var body: some View {
+        let snapshot = diagnosticsStore.snapshot
+
+        SettingsPage(
+            title: "Diagnostics",
+            subtitle: "Inspect what GestureBridge sees while testing browsers and gestures."
+        ) {
+            SettingsSection(title: "Current state") {
+                DiagnosticRow(label: "Event tap", value: snapshot.eventTapState)
+                Divider()
+                DiagnosticRow(label: "Accessibility", value: controller.permissions.accessibility.rawValue.capitalized)
+                Divider()
+                DiagnosticRow(label: "Input Monitoring", value: controller.permissions.inputMonitoring.rawValue.capitalized)
+                Divider()
+                DiagnosticRow(label: "Launch at login", value: controller.launchAtLoginStatus.displayText)
+            }
+
+            SettingsSection(title: "Frontmost app") {
+                DiagnosticRow(label: "App", value: snapshot.currentAppName ?? frontmostAppProvider.frontmostAppName() ?? "Unknown")
+                Divider()
+                DiagnosticRow(label: "Bundle ID", value: snapshot.currentBundleId ?? frontmostAppProvider.frontmostBundleId() ?? "Unknown")
+                Divider()
+                DiagnosticRow(label: "Matched profile", value: snapshot.currentProfileName ?? configStore.profileName(for: frontmostAppProvider.frontmostBundleId()))
+            }
+
+            SettingsSection(title: "Last gesture event") {
+                DiagnosticRow(label: "Event", value: snapshot.lastEventType ?? "None")
+                Divider()
+                DiagnosticRow(label: "Decision", value: snapshot.lastDecision ?? "None")
+                Divider()
+                DiagnosticRow(label: "Token", value: snapshot.lastGestureToken?.isEmpty == false ? snapshot.lastGestureToken! : "None")
+                Divider()
+                DiagnosticRow(label: "Action", value: snapshot.lastActionLabel ?? "None")
+                Divider()
+                DiagnosticRow(label: "Shortcut", value: snapshot.lastActionDescription ?? "None")
+                Divider()
+                DiagnosticRow(label: "Updated", value: snapshot.lastUpdatedAt.map(Self.dateFormatter.string(from:)) ?? "Never")
+            }
+
+            Button("Refresh") {
+                controller.refresh()
+            }
+        }
+    }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+}
+
+private struct DiagnosticRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 150, alignment: .leading)
+
+            Text(value)
+                .font(.system(size: 13, design: .monospaced))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct GestureRecorderSheet: View {
+    @Binding var gestureToken: String
+    let recognitionConfig: RecognitionConfig
+    @Environment(\.dismiss) private var dismiss
+    @State private var points: [CGPoint] = []
+    @State private var recordedToken = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Record Gesture")
+                    .font(.system(size: 20, weight: .semibold))
+                Text("Drag inside the pad in the shape you want to assign. Use the same direction pattern as your mouse gesture.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            GestureRecorderPad(points: points, token: recordedToken)
+                .frame(width: 420, height: 240)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            if points.isEmpty {
+                                points = [value.startLocation]
+                            }
+
+                            points.append(value.location)
+                            recordedToken = GesturePathRecognizer.token(
+                                for: points,
+                                config: recognitionConfig
+                            )
+                        }
+                        .onEnded { value in
+                            points.append(value.location)
+                            recordedToken = GesturePathRecognizer.token(
+                                for: points,
+                                config: recognitionConfig
+                            )
+                        }
+                )
+
+            HStack {
+                Text("Recorded token")
+                    .font(.system(size: 13, weight: .medium))
+                Text(recordedToken.isEmpty ? "None" : recordedToken)
+                    .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                    .frame(width: 72, alignment: .leading)
+
+                Spacer()
+
+                Button("Clear") {
+                    points = []
+                    recordedToken = ""
+                }
+
+                Button("Cancel") {
+                    dismiss()
+                }
+
+                Button("Use Gesture") {
+                    gestureToken = recordedToken
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(recordedToken.isEmpty)
+            }
+        }
+        .padding(20)
+    }
+}
+
+private struct GestureRecorderPad: View {
+    let points: [CGPoint]
+    let token: String
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                )
+
+            Canvas { context, _ in
+                guard points.count > 1 else { return }
+
+                var path = Path()
+                path.move(to: points[0])
+
+                for point in points.dropFirst() {
+                    path.addLine(to: point)
+                }
+
+                context.stroke(
+                    path,
+                    with: .color(.accentColor),
+                    style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+                )
+
+                if let first = points.first {
+                    context.fill(Path(ellipseIn: centeredRect(at: first, size: 8)), with: .color(.secondary))
+                }
+
+                if let last = points.last {
+                    context.fill(Path(ellipseIn: centeredRect(at: last, size: 10)), with: .color(.accentColor))
+                }
+            }
+
+            Text(token.isEmpty ? "Drag here" : token)
+                .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                .foregroundStyle(token.isEmpty ? .secondary : .primary)
+                .padding(12)
+        }
+    }
+
+    private func centeredRect(at point: CGPoint, size: CGFloat) -> CGRect {
+        CGRect(
+            x: point.x - size / 2,
+            y: point.y - size / 2,
+            width: size,
+            height: size
+        )
     }
 }
 
