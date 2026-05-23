@@ -28,7 +28,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    @State var selectedTab: SettingsTab
+    @ObservedObject var selection: SettingsSelection
     @ObservedObject var configStore: ConfigStore
     @ObservedObject var controller: GestureBridgeController
 
@@ -37,13 +37,13 @@ struct SettingsView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            SettingsSidebar(selectedTab: $selectedTab)
+            SettingsSidebar(selectedTab: $selection.selectedTab)
 
             Divider()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    switch selectedTab {
+                    switch selection.selectedTab {
                     case .general:
                         GeneralSettingsView(
                             configStore: configStore,
@@ -824,6 +824,12 @@ private struct DiagnosticsView: View {
             Button("Refresh") {
                 controller.refresh()
             }
+        }
+        .onAppear {
+            diagnosticsStore.setCollectingEventDetails(true)
+        }
+        .onDisappear {
+            diagnosticsStore.setCollectingEventDetails(false)
         }
     }
 

@@ -1,8 +1,10 @@
 import AppKit
+import Combine
 import SwiftUI
 
 final class SettingsWindowController {
     private var window: NSWindow?
+    private let selection = SettingsSelection()
 
     private let configStore: ConfigStore
     private let controller: GestureBridgeController
@@ -22,6 +24,8 @@ final class SettingsWindowController {
     }
 
     func show(selecting tab: SettingsTab = .general) {
+        selection.selectedTab = tab
+
         if window == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
@@ -31,22 +35,26 @@ final class SettingsWindowController {
             )
             window.title = "Gestur Settings"
             window.center()
+            window.contentView = NSHostingView(rootView: makeView())
             window.isReleasedWhenClosed = false
             self.window = window
         }
 
-        window?.contentView = NSHostingView(rootView: makeView(selecting: tab))
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func makeView(selecting tab: SettingsTab) -> SettingsView {
+    private func makeView() -> SettingsView {
         SettingsView(
-            selectedTab: tab,
+            selection: selection,
             configStore: configStore,
             controller: controller,
             permissionManager: permissionManager,
             frontmostAppProvider: frontmostAppProvider
         )
     }
+}
+
+final class SettingsSelection: ObservableObject {
+    @Published var selectedTab: SettingsTab = .general
 }

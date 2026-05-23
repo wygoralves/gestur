@@ -29,6 +29,17 @@ struct DiagnosticsSnapshot: Equatable {
 
 final class DiagnosticsStore: ObservableObject {
     @Published private(set) var snapshot = DiagnosticsSnapshot.empty
+    private var isCollectingEventDetails = false
+
+    var shouldCollectEventDetails: Bool {
+        isCollectingEventDetails
+    }
+
+    func setCollectingEventDetails(_ isCollecting: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            self?.isCollectingEventDetails = isCollecting
+        }
+    }
 
     func updateEventTapState(_ state: String) {
         mutate { snapshot in

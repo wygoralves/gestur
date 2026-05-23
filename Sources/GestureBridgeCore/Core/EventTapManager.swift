@@ -124,25 +124,29 @@ final class EventTapManager {
 
         guard config.enabled else {
             hideOverlay()
-            updateDiagnostics(
-                type: type,
-                currentBundleId: frontmostAppProvider.frontmostBundleId(),
-                decision: "Pass-through: disabled",
-                snapshot: nil,
-                action: nil
-            )
+            if shouldCollectDiagnostics {
+                updateDiagnostics(
+                    type: type,
+                    currentBundleId: frontmostAppProvider.frontmostBundleId(),
+                    decision: "Pass-through: disabled",
+                    snapshot: nil,
+                    action: nil
+                )
+            }
             return Unmanaged.passUnretained(event)
         }
 
         guard config.trigger.button == .right else {
             hideOverlay()
-            updateDiagnostics(
-                type: type,
-                currentBundleId: frontmostAppProvider.frontmostBundleId(),
-                decision: "Pass-through: unsupported trigger",
-                snapshot: nil,
-                action: nil
-            )
+            if shouldCollectDiagnostics {
+                updateDiagnostics(
+                    type: type,
+                    currentBundleId: frontmostAppProvider.frontmostBundleId(),
+                    decision: "Pass-through: unsupported trigger",
+                    snapshot: nil,
+                    action: nil
+                )
+            }
             return Unmanaged.passUnretained(event)
         }
 
@@ -159,13 +163,15 @@ final class EventTapManager {
                   config.isEnabledForBundleId(unwrappedBundleId)
             else {
                 hideOverlay()
-                updateDiagnostics(
-                    type: type,
-                    currentBundleId: currentBundleId,
-                    decision: "Pass-through: no enabled profile",
-                    snapshot: nil,
-                    action: nil
-                )
+                if shouldCollectDiagnostics {
+                    updateDiagnostics(
+                        type: type,
+                        currentBundleId: currentBundleId,
+                        decision: "Pass-through: no enabled profile",
+                        snapshot: nil,
+                        action: nil
+                    )
+                }
                 return Unmanaged.passUnretained(event)
             }
 
@@ -176,13 +182,15 @@ final class EventTapManager {
         let decision = recognizer.handle(type: type, event: event, bundleId: bundleId)
         let currentSnapshot = recognizer.activeSnapshot ?? previousSnapshot
         updateOverlayIfNeeded(type: type, config: config)
-        updateDiagnostics(
-            type: type,
-            currentBundleId: bundleId,
-            decision: decision.diagnosticName,
-            snapshot: currentSnapshot,
-            action: decision.action
-        )
+        if shouldCollectDiagnostics {
+            updateDiagnostics(
+                type: type,
+                currentBundleId: bundleId,
+                decision: decision.diagnosticName,
+                snapshot: currentSnapshot,
+                action: decision.action
+            )
+        }
 
         switch decision {
         case .passThrough:
@@ -263,6 +271,10 @@ final class EventTapManager {
             actionLabel: snapshot?.actionLabel,
             actionDescription: action?.displayText
         )
+    }
+
+    private var shouldCollectDiagnostics: Bool {
+        diagnosticsStore.shouldCollectEventDetails
     }
 
     private static func eventMask(for types: [CGEventType]) -> CGEventMask {
