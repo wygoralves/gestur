@@ -96,8 +96,12 @@ private struct SettingsSidebar: View {
                 Button {
                     selectedTab = tab
                 } label: {
-                    Label(tab.rawValue, systemImage: tab.symbolName)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(spacing: 8) {
+                        Image(systemName: tab.symbolName)
+                            .frame(width: 18)
+                        Text(tab.rawValue)
+                        Spacer(minLength: 0)
+                    }
                 }
                 .buttonStyle(SidebarButtonStyle(isSelected: selectedTab == tab))
             }
@@ -119,10 +123,12 @@ private struct SidebarButtonStyle: ButtonStyle {
             .foregroundStyle(isSelected ? .primary : .secondary)
             .padding(.vertical, 8)
             .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .fill(isSelected ? Color(nsColor: .selectedContentBackgroundColor).opacity(0.14) : .clear)
             )
+            .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
@@ -493,11 +499,6 @@ private struct LaunchAtLoginRow: View {
 
             Spacer()
 
-            StatusPill(
-                text: controller.launchAtLoginStatus.displayText,
-                tone: controller.launchAtLoginStatus == .enabled ? .success : .neutral
-            )
-
             Toggle(
                 "",
                 isOn: Binding(
@@ -506,6 +507,7 @@ private struct LaunchAtLoginRow: View {
                 )
             )
             .labelsHidden()
+            .toggleStyle(.switch)
             .disabled(controller.launchAtLoginStatus == .unavailable)
         }
     }
@@ -671,6 +673,7 @@ private struct ProfileEditor: View {
             HStack(alignment: .center, spacing: 12) {
                 Toggle("", isOn: $profile.enabled)
                     .labelsHidden()
+                    .toggleStyle(.switch)
 
                 TextField("Profile name", text: $profile.name)
                     .textFieldStyle(.roundedBorder)
@@ -1209,6 +1212,7 @@ private struct ToggleRow: View {
             Spacer()
             Toggle("", isOn: $isOn)
                 .labelsHidden()
+                .toggleStyle(.switch)
         }
     }
 }
