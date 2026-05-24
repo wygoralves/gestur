@@ -640,7 +640,7 @@ private struct GestureRulesView: View {
 
 private struct RuleHeader: View {
     var body: some View {
-        HStack(spacing: 12) {
+        return HStack(spacing: 12) {
             Text("Gesture")
                 .frame(width: 76, alignment: .leading)
             Text("Label")
@@ -664,7 +664,7 @@ private struct RuleEditorRow: View {
     @State private var isRecordingGesture = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        return HStack(spacing: 12) {
             TextField("D", text: $rule.gesture)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 13, design: .monospaced))
@@ -706,6 +706,17 @@ private struct ShortcutEditor: View {
     @Binding var action: GestureAction
 
     var body: some View {
+        if case .shortcut = action {
+            shortcutControls
+        } else {
+            Text(action.displayText)
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .frame(width: 322, alignment: .leading)
+        }
+    }
+
+    private var shortcutControls: some View {
         let shortcut = Binding<ShortcutAction>(
             get: {
                 if case .shortcut(let shortcut) = action {
@@ -717,7 +728,7 @@ private struct ShortcutEditor: View {
             set: { action = .shortcut($0) }
         )
 
-        HStack(spacing: 12) {
+        return HStack(spacing: 12) {
             Picker("Key", selection: shortcut.key) {
                 ForEach(KeyCodeToken.allCases) { token in
                     Text(token.displayName).tag(token)

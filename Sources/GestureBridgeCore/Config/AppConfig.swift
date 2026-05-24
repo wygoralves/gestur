@@ -80,10 +80,12 @@ struct GestureRule: Codable, Equatable, Identifiable {
 
 enum GestureAction: Codable, Equatable {
     case shortcut(ShortcutAction)
+    case vivaldiTab(VivaldiTabAction)
     case none
 
     private enum CodingKeys: String, CodingKey {
         case shortcut
+        case vivaldiTab
         case none
     }
 
@@ -92,6 +94,8 @@ enum GestureAction: Codable, Equatable {
 
         if container.contains(.shortcut) {
             self = .shortcut(try container.decode(ShortcutAction.self, forKey: .shortcut))
+        } else if container.contains(.vivaldiTab) {
+            self = .vivaldiTab(try container.decode(VivaldiTabAction.self, forKey: .vivaldiTab))
         } else {
             self = .none
         }
@@ -103,6 +107,8 @@ enum GestureAction: Codable, Equatable {
         switch self {
         case .shortcut(let shortcut):
             try container.encode(shortcut, forKey: .shortcut)
+        case .vivaldiTab(let action):
+            try container.encode(action, forKey: .vivaldiTab)
         case .none:
             try container.encode(true, forKey: .none)
         }
@@ -112,8 +118,24 @@ enum GestureAction: Codable, Equatable {
         switch self {
         case .shortcut(let shortcut):
             return shortcut.displayText
+        case .vivaldiTab(let action):
+            return action.displayText
         case .none:
             return "None"
+        }
+    }
+}
+
+enum VivaldiTabAction: String, Codable, Equatable {
+    case previousByOrder
+    case nextByOrder
+
+    var displayText: String {
+        switch self {
+        case .previousByOrder:
+            return "Vivaldi previous tab by order"
+        case .nextByOrder:
+            return "Vivaldi next tab by order"
         }
     }
 }
@@ -132,17 +154,25 @@ struct ShortcutAction: Codable, Equatable {
 }
 
 enum KeyCodeToken: String, Codable, CaseIterable, Equatable, Identifiable {
+    case one
+    case two
     case t
     case w
     case r
     case leftArrow
     case rightArrow
+    case leftBracket
+    case rightBracket
     case tab
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
+        case .one:
+            return "1"
+        case .two:
+            return "2"
         case .t:
             return "T"
         case .w:
@@ -153,6 +183,10 @@ enum KeyCodeToken: String, Codable, CaseIterable, Equatable, Identifiable {
             return "Left"
         case .rightArrow:
             return "Right"
+        case .leftBracket:
+            return "["
+        case .rightBracket:
+            return "]"
         case .tab:
             return "Tab"
         }

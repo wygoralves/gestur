@@ -49,7 +49,7 @@ enum GestureBridgeValidation {
         let matcher = ProfileMatcher(configStore: store)
 
         expect(matcher.profile(for: "com.google.Chrome")?.name == "Chromium browsers", "Chrome profile")
-        expect(matcher.profile(for: "com.vivaldi.Vivaldi")?.name == "Chromium browsers", "Vivaldi profile")
+        expect(matcher.profile(for: "com.vivaldi.Vivaldi")?.name == "Vivaldi", "Vivaldi profile")
         expect(matcher.profile(for: "com.apple.Safari")?.name == "Safari", "Safari profile")
         expect(matcher.profile(for: "org.mozilla.firefox")?.name == "Firefox", "Firefox profile")
         expect(matcher.match(bundleId: "com.example.Unknown", gesture: "D") == nil, "Unknown app pass-through")
@@ -57,6 +57,8 @@ enum GestureBridgeValidation {
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "U")?.label == "New tab", "Up opens new tab")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "R")?.label == "Next tab", "Right moves to right tab")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "L")?.label == "Previous tab", "Left moves to left tab")
+        expect(matcher.match(bundleId: "com.vivaldi.Vivaldi", gesture: "R")?.action == .vivaldiTab(.nextByOrder), "Vivaldi right uses scripted tab-order action")
+        expect(matcher.match(bundleId: "com.vivaldi.Vivaldi", gesture: "L")?.action == .vivaldiTab(.previousByOrder), "Vivaldi left uses scripted tab-order action")
 
         store.block(bundleId: "com.google.Chrome")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "D") == nil, "Blocked app pass-through")
@@ -65,7 +67,11 @@ enum GestureBridgeValidation {
     private static func validateShortcutMapping() {
         expect(KeyCodeMapper.keyCode(for: .t) == 17, "T key mapping")
         expect(KeyCodeMapper.keyCode(for: .w) == 13, "W key mapping")
+        expect(KeyCodeMapper.keyCode(for: .one) == 18, "1 key mapping")
+        expect(KeyCodeMapper.keyCode(for: .two) == 19, "2 key mapping")
         expect(KeyCodeMapper.keyCode(for: .rightArrow) == 124, "Right arrow mapping")
+        expect(KeyCodeMapper.keyCode(for: .leftBracket) == 33, "Left bracket mapping")
+        expect(KeyCodeMapper.keyCode(for: .rightBracket) == 30, "Right bracket mapping")
         expect(KeyCodeMapper.keyCode(for: .tab) == 48, "Tab mapping")
 
         let command = CGEventFlags.from([.command])
@@ -90,7 +96,12 @@ enum GestureBridgeValidation {
         let store = ConfigStore(fileURL: url)
         var oldConfig = store.current
 
-        oldConfig.defaultsRevision = 1
+        oldConfig.defaultsRevision = 2
+        oldConfig.profiles.removeAll { $0.id == DefaultProfiles.vivaldiProfileId }
+        if let chromiumIndex = oldConfig.profiles.firstIndex(where: { $0.id == DefaultProfiles.chromiumProfileId }),
+           !oldConfig.profiles[chromiumIndex].bundleIds.contains(DefaultProfiles.vivaldiBundleId) {
+            oldConfig.profiles[chromiumIndex].bundleIds.append(DefaultProfiles.vivaldiBundleId)
+        }
         oldConfig.profiles[0].rules[0].gesture = "D"
         oldConfig.profiles[0].rules[0].label = "Old new tab"
         store.current = oldConfig
@@ -98,9 +109,11 @@ enum GestureBridgeValidation {
         let migratedStore = ConfigStore(fileURL: url)
         let matcher = ProfileMatcher(configStore: migratedStore)
 
-        expect(migratedStore.current.defaultsRevision == 2, "Config migration updates defaults revision")
+        expect(migratedStore.current.defaultsRevision == 5, "Config migration updates defaults revision")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "D")?.label == "Close tab", "Config migration installs down close")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "U")?.label == "New tab", "Config migration installs up open")
+        expect(matcher.profile(for: DefaultProfiles.vivaldiBundleId)?.name == "Vivaldi", "Config migration moves Vivaldi to Vivaldi profile")
+        expect(migratedStore.current.profiles.first(where: { $0.id == DefaultProfiles.chromiumProfileId })?.bundleIds.contains(DefaultProfiles.vivaldiBundleId) == false, "Config migration removes Vivaldi from Chromium profile")
     }
 
     private static func validateConfigImportExport() {

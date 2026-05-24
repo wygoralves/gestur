@@ -1,7 +1,10 @@
 import Foundation
 
 enum DefaultProfiles {
-    static let revision = 2
+    static let revision = 5
+    static let vivaldiBundleId = "com.vivaldi.Vivaldi"
+    static let vivaldiProfileId = uuid("2EC54551-BC4F-4D88-8FA8-9D5E2E15F9B4")
+    static let chromiumProfileId = uuid("A0B929C6-97D5-4385-B636-3C9E0291E957")
 
     static func makeConfig() -> AppConfig {
         AppConfig(
@@ -17,6 +20,7 @@ enum DefaultProfiles {
                 maxGestureDurationMs: 1200
             ),
             profiles: [
+                vivaldiProfile(),
                 chromiumProfile(),
                 safariProfile(),
                 firefoxProfile()
@@ -31,12 +35,24 @@ enum DefaultProfiles {
         )
     }
 
+    private static func vivaldiProfile() -> BrowserProfile {
+        BrowserProfile(
+            id: vivaldiProfileId,
+            name: "Vivaldi",
+            bundleIds: [vivaldiBundleId],
+            enabled: true,
+            rules: browserRules(
+                previousTab: .vivaldiTab(.previousByOrder),
+                nextTab: .vivaldiTab(.nextByOrder)
+            )
+        )
+    }
+
     private static func chromiumProfile() -> BrowserProfile {
         BrowserProfile(
-            id: uuid("A0B929C6-97D5-4385-B636-3C9E0291E957"),
+            id: chromiumProfileId,
             name: "Chromium browsers",
             bundleIds: [
-                "com.vivaldi.Vivaldi",
                 "com.google.Chrome",
                 "com.google.Chrome.canary",
                 "com.brave.Browser",

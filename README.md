@@ -68,6 +68,8 @@ It covers gesture token recognition, profile matching, shortcut key mapping, def
 
 You can edit profile-specific gesture rules in Settings → Gestures.
 
+Vivaldi has its own default profile because it separates tab cycling from switching tabs by displayed order. Gestur uses Vivaldi's scripting interface for left and right gestures so tab switching stays by displayed order even when a text field has focus.
+
 Use the record button in a gesture row to draw a gesture in the recording pad instead of typing the token manually.
 
 ## Permissions
@@ -76,6 +78,7 @@ Gestur needs:
 
 - Accessibility, to send browser keyboard shortcuts.
 - Input Monitoring, to observe mouse input while browsers are frontmost.
+- Automation for Vivaldi, to switch Vivaldi tabs by displayed order without relying on fragile keyboard shortcuts.
 
 The app will not start the event tap until both are granted.
 

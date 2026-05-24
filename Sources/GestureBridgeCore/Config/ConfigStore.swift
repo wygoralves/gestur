@@ -22,7 +22,11 @@ final class ConfigStore: ObservableObject {
         self.encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
         if let loaded = Self.load(from: self.fileURL, decoder: self.decoder) {
-            self.current = Self.migratedConfig(from: loaded)
+            let migrated = Self.migratedConfig(from: loaded)
+            self.current = migrated
+            if migrated != loaded {
+                save()
+            }
         } else if let legacy = Self.load(from: Self.legacyConfigURL(), decoder: self.decoder) {
             self.current = Self.migratedConfig(from: legacy)
             save()
@@ -120,12 +124,18 @@ final class ConfigStore: ObservableObject {
     }
 
     private static func migratedConfig(from loaded: AppConfig) -> AppConfig {
-        guard loaded.defaultsRevision != DefaultProfiles.revision else {
+        let loadedRevision = loaded.defaultsRevision ?? 0
+
+        guard loadedRevision != DefaultProfiles.revision else {
             return loaded
         }
 
         let defaults = DefaultProfiles.makeConfig()
         var migrated = loaded
+
+        if loadedRevision < 3 {
+            migrateVivaldiProfile(in: &migrated, defaults: defaults)
+        }
 
         for defaultProfile in defaults.profiles {
             if let index = migrated.profiles.firstIndex(where: { $0.id == defaultProfile.id }) {
@@ -144,6 +154,26 @@ final class ConfigStore: ObservableObject {
 
         migrated.defaultsRevision = DefaultProfiles.revision
         return migrated
+    }
+
+    private static func migrateVivaldiProfile(in config: inout AppConfig, defaults: AppConfig) {
+        for index in config.profiles.indices where config.profiles[index].id != DefaultProfiles.vivaldiProfileId {
+            config.profiles[index].bundleIds.removeAll { $0 == DefaultProfiles.vivaldiBundleId }
+        }
+
+        if let index = config.profiles.firstIndex(where: { $0.id == DefaultProfiles.vivaldiProfileId }) {
+            if !config.profiles[index].bundleIds.contains(DefaultProfiles.vivaldiBundleId) {
+                config.profiles[index].bundleIds.append(DefaultProfiles.vivaldiBundleId)
+            }
+            return
+        }
+
+        guard let vivaldiProfile = defaults.profiles.first(where: { $0.id == DefaultProfiles.vivaldiProfileId }) else {
+            return
+        }
+
+        let insertionIndex = config.profiles.firstIndex { $0.id == DefaultProfiles.chromiumProfileId } ?? 0
+        config.profiles.insert(vivaldiProfile, at: insertionIndex)
     }
 
     private static func defaultConfigURL() -> URL {
