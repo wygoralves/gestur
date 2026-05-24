@@ -137,6 +137,14 @@ final class ConfigStore: ObservableObject {
             migrateVivaldiProfile(in: &migrated, defaults: defaults)
         }
 
+        if loadedRevision < 6 {
+            migrateDiaCompatibility(in: &migrated)
+        }
+
+        if loadedRevision < 7 {
+            migrateDiaProfile(in: &migrated, defaults: defaults)
+        }
+
         for defaultProfile in defaults.profiles {
             if let index = migrated.profiles.firstIndex(where: { $0.id == defaultProfile.id }) {
                 let existing = migrated.profiles[index]
@@ -174,6 +182,40 @@ final class ConfigStore: ObservableObject {
 
         let insertionIndex = config.profiles.firstIndex { $0.id == DefaultProfiles.chromiumProfileId } ?? 0
         config.profiles.insert(vivaldiProfile, at: insertionIndex)
+    }
+
+    private static func migrateDiaCompatibility(in config: inout AppConfig) {
+        for index in config.profiles.indices {
+            config.profiles[index].bundleIds.removeAll { $0 == DefaultProfiles.arcBundleId }
+        }
+
+        guard let chromiumIndex = config.profiles.firstIndex(where: { $0.id == DefaultProfiles.chromiumProfileId }) else {
+            return
+        }
+
+        if !config.profiles[chromiumIndex].bundleIds.contains(DefaultProfiles.diaBundleId) {
+            config.profiles[chromiumIndex].bundleIds.append(DefaultProfiles.diaBundleId)
+        }
+    }
+
+    private static func migrateDiaProfile(in config: inout AppConfig, defaults: AppConfig) {
+        for index in config.profiles.indices where config.profiles[index].id != DefaultProfiles.diaProfileId {
+            config.profiles[index].bundleIds.removeAll { $0 == DefaultProfiles.diaBundleId }
+        }
+
+        if let index = config.profiles.firstIndex(where: { $0.id == DefaultProfiles.diaProfileId }) {
+            if !config.profiles[index].bundleIds.contains(DefaultProfiles.diaBundleId) {
+                config.profiles[index].bundleIds.append(DefaultProfiles.diaBundleId)
+            }
+            return
+        }
+
+        guard let diaProfile = defaults.profiles.first(where: { $0.id == DefaultProfiles.diaProfileId }) else {
+            return
+        }
+
+        let insertionIndex = config.profiles.firstIndex { $0.id == DefaultProfiles.chromiumProfileId } ?? 0
+        config.profiles.insert(diaProfile, at: insertionIndex)
     }
 
     private static func defaultConfigURL() -> URL {

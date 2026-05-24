@@ -81,11 +81,13 @@ struct GestureRule: Codable, Equatable, Identifiable {
 enum GestureAction: Codable, Equatable {
     case shortcut(ShortcutAction)
     case vivaldiTab(VivaldiTabAction)
+    case diaTab(DiaTabAction)
     case none
 
     private enum CodingKeys: String, CodingKey {
         case shortcut
         case vivaldiTab
+        case diaTab
         case none
     }
 
@@ -96,6 +98,8 @@ enum GestureAction: Codable, Equatable {
             self = .shortcut(try container.decode(ShortcutAction.self, forKey: .shortcut))
         } else if container.contains(.vivaldiTab) {
             self = .vivaldiTab(try container.decode(VivaldiTabAction.self, forKey: .vivaldiTab))
+        } else if container.contains(.diaTab) {
+            self = .diaTab(try container.decode(DiaTabAction.self, forKey: .diaTab))
         } else {
             self = .none
         }
@@ -109,6 +113,8 @@ enum GestureAction: Codable, Equatable {
             try container.encode(shortcut, forKey: .shortcut)
         case .vivaldiTab(let action):
             try container.encode(action, forKey: .vivaldiTab)
+        case .diaTab(let action):
+            try container.encode(action, forKey: .diaTab)
         case .none:
             try container.encode(true, forKey: .none)
         }
@@ -119,6 +125,8 @@ enum GestureAction: Codable, Equatable {
         case .shortcut(let shortcut):
             return shortcut.displayText
         case .vivaldiTab(let action):
+            return action.displayText
+        case .diaTab(let action):
             return action.displayText
         case .none:
             return "None"
@@ -136,6 +144,20 @@ enum VivaldiTabAction: String, Codable, Equatable {
             return "Vivaldi previous tab by order"
         case .nextByOrder:
             return "Vivaldi next tab by order"
+        }
+    }
+}
+
+enum DiaTabAction: String, Codable, Equatable {
+    case previous
+    case next
+
+    var displayText: String {
+        switch self {
+        case .previous:
+            return "Dia previous tab"
+        case .next:
+            return "Dia next tab"
         }
     }
 }

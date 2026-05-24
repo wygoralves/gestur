@@ -8,13 +8,16 @@ protocol ActionDispatching: AnyObject {
 final class ActionDispatcher: ActionDispatching {
     private let shortcutDispatcher: ShortcutDispatcher
     private let vivaldiTabDispatcher: VivaldiTabDispatcher
+    private let diaTabDispatcher: DiaTabDispatcher
 
     init(
         shortcutDispatcher: ShortcutDispatcher = ShortcutDispatcher(),
-        vivaldiTabDispatcher: VivaldiTabDispatcher = VivaldiTabDispatcher()
+        vivaldiTabDispatcher: VivaldiTabDispatcher = VivaldiTabDispatcher(),
+        diaTabDispatcher: DiaTabDispatcher = DiaTabDispatcher()
     ) {
         self.shortcutDispatcher = shortcutDispatcher
         self.vivaldiTabDispatcher = vivaldiTabDispatcher
+        self.diaTabDispatcher = diaTabDispatcher
     }
 
     func dispatch(_ action: GestureAction) {
@@ -23,6 +26,8 @@ final class ActionDispatcher: ActionDispatching {
             shortcutDispatcher.dispatch(shortcut)
         case .vivaldiTab(let action):
             vivaldiTabDispatcher.dispatch(action)
+        case .diaTab(let action):
+            diaTabDispatcher.dispatch(action)
         case .none:
             break
         }
@@ -103,6 +108,62 @@ final class VivaldiTabDispatcher {
                 end if
 
                 set active tab index to nextIndex
+            end tell
+        end tell
+        """
+    }
+}
+
+final class DiaTabDispatcher {
+    func dispatch(_ action: DiaTabAction) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            var error: NSDictionary?
+            let script = Self.script(for: action)
+            NSAppleScript(source: script)?.executeAndReturnError(&error)
+
+            if let error {
+                NSLog("Gestur failed to run Dia tab action: \(error)")
+            }
+        }
+    }
+
+    private static func script(for action: DiaTabAction) -> String {
+        let offset: String
+
+        switch action {
+        case .previous:
+            offset = "-1"
+        case .next:
+            offset = "1"
+        }
+
+        return """
+        tell application id "company.thebrowser.dia"
+            if (count of windows) is 0 then return
+
+            tell window 1
+                set tabCount to count of tabs
+                if tabCount is 0 then return
+
+                set activeId to id of active tab
+                set currentIndex to 1
+
+                repeat with i from 1 to tabCount
+                    if (id of tab i) is activeId then
+                        set currentIndex to i
+                        exit repeat
+                    end if
+                end repeat
+
+                set nextIndex to currentIndex + (\(offset))
+
+                if nextIndex < 1 then
+                    set nextIndex to tabCount
+                else if nextIndex > tabCount then
+                    set nextIndex to 1
+                end if
+
+                focus tab nextIndex
             end tell
         end tell
         """

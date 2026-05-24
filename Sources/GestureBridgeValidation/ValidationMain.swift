@@ -49,6 +49,8 @@ enum GestureBridgeValidation {
         let matcher = ProfileMatcher(configStore: store)
 
         expect(matcher.profile(for: "com.google.Chrome")?.name == "Chromium browsers", "Chrome profile")
+        expect(matcher.profile(for: "company.thebrowser.dia")?.name == "Dia", "Dia profile")
+        expect(matcher.profile(for: "company.thebrowser.Browser") == nil, "Arc is not enabled by default")
         expect(matcher.profile(for: "com.vivaldi.Vivaldi")?.name == "Vivaldi", "Vivaldi profile")
         expect(matcher.profile(for: "com.apple.Safari")?.name == "Safari", "Safari profile")
         expect(matcher.profile(for: "org.mozilla.firefox")?.name == "Firefox", "Firefox profile")
@@ -57,6 +59,8 @@ enum GestureBridgeValidation {
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "U")?.label == "New tab", "Up opens new tab")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "R")?.label == "Next tab", "Right moves to right tab")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "L")?.label == "Previous tab", "Left moves to left tab")
+        expect(matcher.match(bundleId: "company.thebrowser.dia", gesture: "R")?.action == .diaTab(.next), "Dia right uses next tab menu action")
+        expect(matcher.match(bundleId: "company.thebrowser.dia", gesture: "L")?.action == .diaTab(.previous), "Dia left uses previous tab menu action")
         expect(matcher.match(bundleId: "com.vivaldi.Vivaldi", gesture: "R")?.action == .vivaldiTab(.nextByOrder), "Vivaldi right uses scripted tab-order action")
         expect(matcher.match(bundleId: "com.vivaldi.Vivaldi", gesture: "L")?.action == .vivaldiTab(.previousByOrder), "Vivaldi left uses scripted tab-order action")
 
@@ -102,6 +106,12 @@ enum GestureBridgeValidation {
            !oldConfig.profiles[chromiumIndex].bundleIds.contains(DefaultProfiles.vivaldiBundleId) {
             oldConfig.profiles[chromiumIndex].bundleIds.append(DefaultProfiles.vivaldiBundleId)
         }
+        if let chromiumIndex = oldConfig.profiles.firstIndex(where: { $0.id == DefaultProfiles.chromiumProfileId }) {
+            oldConfig.profiles[chromiumIndex].bundleIds.removeAll { $0 == DefaultProfiles.diaBundleId }
+            if !oldConfig.profiles[chromiumIndex].bundleIds.contains(DefaultProfiles.arcBundleId) {
+                oldConfig.profiles[chromiumIndex].bundleIds.append(DefaultProfiles.arcBundleId)
+            }
+        }
         oldConfig.profiles[0].rules[0].gesture = "D"
         oldConfig.profiles[0].rules[0].label = "Old new tab"
         store.current = oldConfig
@@ -109,11 +119,15 @@ enum GestureBridgeValidation {
         let migratedStore = ConfigStore(fileURL: url)
         let matcher = ProfileMatcher(configStore: migratedStore)
 
-        expect(migratedStore.current.defaultsRevision == 5, "Config migration updates defaults revision")
+        expect(migratedStore.current.defaultsRevision == 8, "Config migration updates defaults revision")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "D")?.label == "Close tab", "Config migration installs down close")
         expect(matcher.match(bundleId: "com.google.Chrome", gesture: "U")?.label == "New tab", "Config migration installs up open")
         expect(matcher.profile(for: DefaultProfiles.vivaldiBundleId)?.name == "Vivaldi", "Config migration moves Vivaldi to Vivaldi profile")
         expect(migratedStore.current.profiles.first(where: { $0.id == DefaultProfiles.chromiumProfileId })?.bundleIds.contains(DefaultProfiles.vivaldiBundleId) == false, "Config migration removes Vivaldi from Chromium profile")
+        expect(matcher.profile(for: DefaultProfiles.diaBundleId)?.name == "Dia", "Config migration moves Dia to Dia profile")
+        expect(matcher.match(bundleId: DefaultProfiles.diaBundleId, gesture: "R")?.action == .diaTab(.next), "Config migration installs Dia menu tab action")
+        expect(migratedStore.current.profiles.first(where: { $0.id == DefaultProfiles.chromiumProfileId })?.bundleIds.contains(DefaultProfiles.diaBundleId) == false, "Config migration removes Dia from Chromium profile")
+        expect(migratedStore.current.profiles.first(where: { $0.id == DefaultProfiles.chromiumProfileId })?.bundleIds.contains(DefaultProfiles.arcBundleId) == false, "Config migration removes Arc from Chromium profile")
     }
 
     private static func validateConfigImportExport() {

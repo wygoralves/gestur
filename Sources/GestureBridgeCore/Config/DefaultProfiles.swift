@@ -1,9 +1,12 @@
 import Foundation
 
 enum DefaultProfiles {
-    static let revision = 5
+    static let revision = 8
     static let vivaldiBundleId = "com.vivaldi.Vivaldi"
+    static let diaBundleId = "company.thebrowser.dia"
+    static let arcBundleId = "company.thebrowser.Browser"
     static let vivaldiProfileId = uuid("2EC54551-BC4F-4D88-8FA8-9D5E2E15F9B4")
+    static let diaProfileId = uuid("8B67C67F-184D-4207-A45C-A9D6BC0EED6A")
     static let chromiumProfileId = uuid("A0B929C6-97D5-4385-B636-3C9E0291E957")
 
     static func makeConfig() -> AppConfig {
@@ -21,6 +24,7 @@ enum DefaultProfiles {
             ),
             profiles: [
                 vivaldiProfile(),
+                diaProfile(),
                 chromiumProfile(),
                 safariProfile(),
                 firefoxProfile()
@@ -48,6 +52,19 @@ enum DefaultProfiles {
         )
     }
 
+    private static func diaProfile() -> BrowserProfile {
+        BrowserProfile(
+            id: diaProfileId,
+            name: "Dia",
+            bundleIds: [diaBundleId],
+            enabled: true,
+            rules: browserRules(
+                previousTab: .diaTab(.previous),
+                nextTab: .diaTab(.next)
+            )
+        )
+    }
+
     private static func chromiumProfile() -> BrowserProfile {
         BrowserProfile(
             id: chromiumProfileId,
@@ -57,7 +74,6 @@ enum DefaultProfiles {
                 "com.google.Chrome.canary",
                 "com.brave.Browser",
                 "com.microsoft.edgemac",
-                "company.thebrowser.Browser",
                 "com.operasoftware.Opera"
             ],
             enabled: true,
