@@ -25,7 +25,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Swift validation
         run: swift run GesturValidation
@@ -46,7 +46,7 @@ jobs:
       released_version: ${{ steps.release_ref.outputs.version }}
     steps:
       - name: Checkout release ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -149,19 +149,19 @@ jobs:
 
       - name: Checkout released tag
         if: steps.tap_token.outputs.present == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ needs.release.outputs.released_tag }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.tap_token.outputs.present == 'true'
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Checkout tap repository
         if: steps.tap_token.outputs.present == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.HOMEBREW_TAP_REPO }}
           path: homebrew-tap
