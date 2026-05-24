@@ -27,6 +27,6 @@
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Gestur.</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Gestur uses automation to switch Vivaldi tabs by displayed order when Vivaldi is frontmost.</string>
+    <string>Gestur uses automation to switch tabs by displayed order in browsers that need browser-specific tab control.</string>
 </dict>
 </plist>
