@@ -63,14 +63,16 @@ final class OverlayWindowController: GestureOverlayControlling {
         guard let panel else { return }
 
         let panelSize = panel.frame.size
-        let screen = NSScreen.screens.first ?? NSScreen.main
+        let screenPoint = point.map(Self.appKitScreenPoint(from:)) ?? NSEvent.mouseLocation
+        let screen = Self.screen(containing: screenPoint) ?? NSScreen.main ?? NSScreen.screens.first
         let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let origin: CGPoint
 
         if let point {
+            let screenPoint = Self.appKitScreenPoint(from: point)
             let proposed = CGPoint(
-                x: point.x + 22,
-                y: visibleFrame.maxY - point.y - panelSize.height - 22
+                x: screenPoint.x + 22,
+                y: screenPoint.y - panelSize.height - 22
             )
 
             origin = CGPoint(
@@ -85,6 +87,22 @@ final class OverlayWindowController: GestureOverlayControlling {
         }
 
         panel.setFrameOrigin(origin)
+    }
+
+    private static func appKitScreenPoint(from eventPoint: CGPoint) -> CGPoint {
+        let primaryScreen = NSScreen.screens.first ?? NSScreen.main
+        let primaryHeight = primaryScreen?.frame.height ?? 0
+
+        return CGPoint(
+            x: eventPoint.x,
+            y: primaryHeight - eventPoint.y
+        )
+    }
+
+    private static func screen(containing point: CGPoint) -> NSScreen? {
+        NSScreen.screens.first { screen in
+            screen.frame.insetBy(dx: -1, dy: -1).contains(point)
+        }
     }
 }
 
