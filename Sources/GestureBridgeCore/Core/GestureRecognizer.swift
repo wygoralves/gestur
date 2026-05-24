@@ -44,16 +44,14 @@ final class GestureRecognizer {
         )
     }
 
-    func handle(type: CGEventType, event: CGEvent, bundleId: String) -> GestureDecision {
-        switch type {
-        case .rightMouseDown:
+    func handle(phase: GesturePhase, event: CGEvent, bundleId: String) -> GestureDecision {
+        switch phase {
+        case .down:
             return handleMouseDown(event: event, bundleId: bundleId)
-        case .rightMouseDragged:
+        case .dragged:
             return handleMouseDragged(event: event)
-        case .rightMouseUp:
+        case .up:
             return handleMouseUp(event: event)
-        default:
-            return .passThrough
         }
     }
 
@@ -137,7 +135,7 @@ final class GestureRecognizer {
                 return .passThrough
             }
 
-            return .replayRightClick(originalDown: originalDown, up: up)
+            return .replayClick(originalDown: originalDown, up: up)
         }
 
         guard let rule = profileMatcher.match(

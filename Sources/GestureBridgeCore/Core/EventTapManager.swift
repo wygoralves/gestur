@@ -108,7 +108,9 @@ final class EventTapManager {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
 
-            manager.diagnosticsStore.updateEventTapState("Re-enabled after \(type.diagnosticName)")
+            manager.diagnosticsStore.updateEventTapState(
+                "Re-enabled after \(EventTapManager.diagnosticName(for: type, event: event))"
+            )
             return Unmanaged.passUnretained(event)
         }
 
@@ -127,6 +129,7 @@ final class EventTapManager {
             if shouldCollectDiagnostics {
                 updateDiagnostics(
                     type: type,
+                    event: event,
                     currentBundleId: frontmostAppProvider.frontmostBundleId(),
                     decision: "Pass-through: disabled",
                     snapshot: nil,
@@ -136,13 +139,33 @@ final class EventTapManager {
             return Unmanaged.passUnretained(event)
         }
 
-        guard config.trigger.button == .right else {
-            hideOverlay()
+        let currentBundleId = frontmostAppProvider.frontmostBundleId()
+        let activePhase = config.trigger.gesturePhase(
+            for: type,
+            event: event,
+            requireModifiers: false
+        )
+        let startingPhase = config.trigger.gesturePhase(
+            for: type,
+            event: event,
+            requireModifiers: true
+        )
+        let phase: GesturePhase?
+
+        if recognizer.hasActiveSession {
+            phase = activePhase
+        } else {
+            phase = startingPhase
+        }
+
+        guard let phase else {
+            hideOverlayIfNeeded(phase: activePhase)
             if shouldCollectDiagnostics {
                 updateDiagnostics(
                     type: type,
-                    currentBundleId: frontmostAppProvider.frontmostBundleId(),
-                    decision: "Pass-through: unsupported trigger",
+                    event: event,
+                    currentBundleId: currentBundleId,
+                    decision: "Pass-through: trigger mismatch",
                     snapshot: nil,
                     action: nil
                 )
@@ -150,13 +173,9 @@ final class EventTapManager {
             return Unmanaged.passUnretained(event)
         }
 
-        let currentBundleId = frontmostAppProvider.frontmostBundleId()
-        let isGestureContinuation = recognizer.hasActiveSession &&
-            (type == .rightMouseDragged || type == .rightMouseUp)
-
         let bundleId: String
 
-        if isGestureContinuation, let activeBundleId = recognizer.activeBundleId {
+        if recognizer.hasActiveSession, let activeBundleId = recognizer.activeBundleId {
             bundleId = activeBundleId
         } else {
             guard let unwrappedBundleId = currentBundleId,
@@ -166,6 +185,7 @@ final class EventTapManager {
                 if shouldCollectDiagnostics {
                     updateDiagnostics(
                         type: type,
+                        event: event,
                         currentBundleId: currentBundleId,
                         decision: "Pass-through: no enabled profile",
                         snapshot: nil,
@@ -179,12 +199,13 @@ final class EventTapManager {
         }
 
         let previousSnapshot = recognizer.activeSnapshot
-        let decision = recognizer.handle(type: type, event: event, bundleId: bundleId)
+        let decision = recognizer.handle(phase: phase, event: event, bundleId: bundleId)
         let currentSnapshot = recognizer.activeSnapshot ?? previousSnapshot
-        updateOverlayIfNeeded(type: type, config: config)
+        updateOverlayIfNeeded(phase: phase, config: config)
         if shouldCollectDiagnostics {
             updateDiagnostics(
                 type: type,
+                event: event,
                 currentBundleId: bundleId,
                 decision: decision.diagnosticName,
                 snapshot: currentSnapshot,
@@ -202,15 +223,15 @@ final class EventTapManager {
                 actionDispatcher.dispatch(action)
             }
             return nil
-        case .replayRightClick(let originalDown, let up):
+        case .replayClick(let originalDown, let up):
             DispatchQueue.main.async { [weak self] in
-                self?.replayRightClick(originalDown: originalDown, up: up)
+                self?.replayClick(originalDown: originalDown, up: up)
             }
             return nil
         }
     }
 
-    private func replayRightClick(originalDown: CGEvent, up: CGEvent) {
+    private func replayClick(originalDown: CGEvent, up: CGEvent) {
         originalDown.setIntegerValueField(.eventSourceUserData, value: SyntheticEventMarker.value)
         up.setIntegerValueField(.eventSourceUserData, value: SyntheticEventMarker.value)
 
@@ -218,16 +239,16 @@ final class EventTapManager {
         up.post(tap: .cgSessionEventTap)
     }
 
-    private func updateOverlayIfNeeded(type: CGEventType, config: AppConfig) {
+    private func updateOverlayIfNeeded(phase: GesturePhase, config: AppConfig) {
         guard config.showGestureOverlay else {
-            if type == .rightMouseUp {
+            if phase == .up {
                 hideOverlay()
             }
             return
         }
 
-        switch type {
-        case .rightMouseDown, .rightMouseDragged:
+        switch phase {
+        case .down, .dragged:
             guard let snapshot = recognizer.activeSnapshot else {
                 return
             }
@@ -235,13 +256,16 @@ final class EventTapManager {
             DispatchQueue.main.async { [overlayController] in
                 overlayController?.show(snapshot: snapshot)
             }
-        case .rightMouseUp:
+        case .up:
             DispatchQueue.main.async { [overlayController] in
                 overlayController?.hide(after: 0.45)
             }
-        default:
-            break
         }
+    }
+
+    private func hideOverlayIfNeeded(phase: GesturePhase?) {
+        guard phase == .up else { return }
+        hideOverlay()
     }
 
     private func hideOverlay() {
@@ -252,6 +276,7 @@ final class EventTapManager {
 
     private func updateDiagnostics(
         type: CGEventType,
+        event: CGEvent,
         currentBundleId: String?,
         decision: String,
         snapshot: GestureOverlaySnapshot?,
@@ -265,7 +290,7 @@ final class EventTapManager {
             profileName: profileName
         )
         diagnosticsStore.updateEvent(
-            type: type.diagnosticName,
+            type: Self.diagnosticName(for: type, event: event),
             decision: decision,
             gestureToken: snapshot?.token,
             actionLabel: snapshot?.actionLabel,
@@ -282,24 +307,37 @@ final class EventTapManager {
             mask | (CGEventMask(1) << type.rawValue)
         }
     }
-}
 
-private extension CGEventType {
-    var diagnosticName: String {
-        switch self {
+    private static func diagnosticName(for type: CGEventType, event: CGEvent) -> String {
+        switch type {
         case .rightMouseDown:
             return "Right mouse down"
         case .rightMouseDragged:
             return "Right mouse dragged"
         case .rightMouseUp:
             return "Right mouse up"
+        case .otherMouseDown:
+            return "Other mouse down (\(buttonDescription(for: event)))"
+        case .otherMouseDragged:
+            return "Other mouse dragged (\(buttonDescription(for: event)))"
+        case .otherMouseUp:
+            return "Other mouse up (\(buttonDescription(for: event)))"
         case .tapDisabledByTimeout:
             return "Tap disabled by timeout"
         case .tapDisabledByUserInput:
             return "Tap disabled by user input"
         default:
-            return "Event \(rawValue)"
+            return "Event \(type.rawValue)"
         }
+    }
+
+    private static func buttonDescription(for event: CGEvent) -> String {
+        let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
+        if buttonNumber == 2 {
+            return "middle"
+        }
+
+        return "button \(buttonNumber)"
     }
 }
 
@@ -312,8 +350,8 @@ private extension GestureDecision {
             return "Swallow"
         case .dispatch:
             return "Dispatch action"
-        case .replayRightClick:
-            return "Replay right-click"
+        case .replayClick:
+            return "Replay click"
         }
     }
 

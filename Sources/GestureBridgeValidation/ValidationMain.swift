@@ -8,6 +8,7 @@ enum GestureBridgeValidation {
 
     static func main() {
         validateGestureRecognition()
+        validateTriggerMatching()
         validateProfileMatching()
         validateShortcutMapping()
         validateConfigMigration()
@@ -42,6 +43,75 @@ enum GestureBridgeValidation {
         expect(token([(0, 0), (0, -30), (0, 10)], config) == "UD", "Up then down")
         expect(token([(0, 0), (5, 0), (10, 0)], config).isEmpty, "Jitter below threshold")
         expect(token([(0, 0), (30, 0), (60, 0)], config) == "R", "Repeated direction collapse")
+    }
+
+    private static func validateTriggerMatching() {
+        let rightTrigger = TriggerConfig(button: .right, requiredModifiers: [])
+        expect(
+            rightTrigger.gesturePhase(for: .rightMouseDown, event: mouseEvent(type: .rightMouseDown, button: .right)) == .down,
+            "Right trigger matches right down"
+        )
+        expect(
+            rightTrigger.gesturePhase(for: .rightMouseDragged, event: mouseEvent(type: .rightMouseDragged, button: .right)) == .dragged,
+            "Right trigger matches right drag"
+        )
+        expect(
+            rightTrigger.gesturePhase(for: .rightMouseUp, event: mouseEvent(type: .rightMouseUp, button: .right)) == .up,
+            "Right trigger matches right up"
+        )
+        expect(
+            rightTrigger.gesturePhase(for: .otherMouseDown, event: otherMouseEvent(type: .otherMouseDown, buttonNumber: 2)) == nil,
+            "Right trigger ignores middle down"
+        )
+
+        let middleTrigger = TriggerConfig(button: .middle, requiredModifiers: [])
+        expect(
+            middleTrigger.gesturePhase(for: .otherMouseDown, event: otherMouseEvent(type: .otherMouseDown, buttonNumber: 2)) == .down,
+            "Middle trigger matches middle down"
+        )
+        expect(
+            middleTrigger.gesturePhase(for: .otherMouseDragged, event: otherMouseEvent(type: .otherMouseDragged, buttonNumber: 2)) == .dragged,
+            "Middle trigger matches middle drag"
+        )
+        expect(
+            middleTrigger.gesturePhase(for: .otherMouseUp, event: otherMouseEvent(type: .otherMouseUp, buttonNumber: 2)) == .up,
+            "Middle trigger matches middle up"
+        )
+        expect(
+            middleTrigger.gesturePhase(for: .otherMouseDown, event: otherMouseEvent(type: .otherMouseDown, buttonNumber: 4)) == nil,
+            "Middle trigger ignores side button"
+        )
+
+        let sideTrigger = TriggerConfig(button: .other, requiredModifiers: [], otherButtonNumber: 4)
+        expect(
+            sideTrigger.gesturePhase(for: .otherMouseDown, event: otherMouseEvent(type: .otherMouseDown, buttonNumber: 4)) == .down,
+            "Other trigger matches configured button"
+        )
+        expect(
+            sideTrigger.gesturePhase(for: .otherMouseDown, event: otherMouseEvent(type: .otherMouseDown, buttonNumber: 3)) == nil,
+            "Other trigger ignores different button"
+        )
+
+        let modifiedTrigger = TriggerConfig(button: .other, requiredModifiers: [.option], otherButtonNumber: 4)
+        expect(
+            modifiedTrigger.gesturePhase(for: .otherMouseDown, event: otherMouseEvent(type: .otherMouseDown, buttonNumber: 4)) == nil,
+            "Required modifier blocks trigger start"
+        )
+        expect(
+            modifiedTrigger.gesturePhase(
+                for: .otherMouseDown,
+                event: otherMouseEvent(type: .otherMouseDown, buttonNumber: 4, modifiers: [.option])
+            ) == .down,
+            "Required modifier allows trigger start"
+        )
+        expect(
+            modifiedTrigger.gesturePhase(
+                for: .otherMouseDragged,
+                event: otherMouseEvent(type: .otherMouseDragged, buttonNumber: 4),
+                requireModifiers: false
+            ) == .dragged,
+            "Active trigger continuation does not require modifiers"
+        )
     }
 
     private static func validateProfileMatching() {
@@ -137,6 +207,11 @@ enum GestureBridgeValidation {
 
         let sourceStore = ConfigStore(fileURL: sourceURL)
         sourceStore.current.profiles[0].name = "Custom Chromium"
+        sourceStore.current.trigger = TriggerConfig(
+            button: .other,
+            requiredModifiers: [.control],
+            otherButtonNumber: 5
+        )
 
         do {
             try sourceStore.exportConfig(to: exportURL)
@@ -145,6 +220,7 @@ enum GestureBridgeValidation {
             try importedStore.importConfig(from: exportURL)
 
             expect(importedStore.current.profiles[0].name == "Custom Chromium", "Config import/export preserves profile edits")
+            expect(importedStore.current.trigger == sourceStore.current.trigger, "Config import/export preserves trigger edits")
         } catch {
             failures.append("Config import/export threw: \(error.localizedDescription)")
         }
@@ -158,6 +234,36 @@ enum GestureBridgeValidation {
             for: tuples.map { CGPoint(x: $0.0, y: $0.1) },
             config: config
         )
+    }
+
+    private static func mouseEvent(
+        type: CGEventType,
+        button: CGMouseButton,
+        modifiers: [ModifierKey] = []
+    ) -> CGEvent {
+        let event = CGEvent(
+            mouseEventSource: nil,
+            mouseType: type,
+            mouseCursorPosition: .zero,
+            mouseButton: button
+        )
+
+        guard let event else {
+            fatalError("Failed to create mouse event")
+        }
+
+        event.flags = CGEventFlags.from(modifiers)
+        return event
+    }
+
+    private static func otherMouseEvent(
+        type: CGEventType,
+        buttonNumber: Int,
+        modifiers: [ModifierKey] = []
+    ) -> CGEvent {
+        let event = mouseEvent(type: type, button: .center, modifiers: modifiers)
+        event.setIntegerValueField(.mouseEventButtonNumber, value: Int64(buttonNumber))
+        return event
     }
 
     private static func expect(_ condition: Bool, _ message: String) {

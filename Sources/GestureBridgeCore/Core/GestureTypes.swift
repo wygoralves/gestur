@@ -23,6 +23,12 @@ enum Direction: String, Equatable {
     }
 }
 
+enum GesturePhase: Equatable {
+    case down
+    case dragged
+    case up
+}
+
 struct GestureSession {
     let bundleId: String
     let startPoint: CGPoint
@@ -53,7 +59,7 @@ enum GestureDecision: Equatable {
     case passThrough
     case swallow
     case dispatch(GestureAction)
-    case replayRightClick(originalDown: CGEvent, up: CGEvent)
+    case replayClick(originalDown: CGEvent, up: CGEvent)
 
     static func == (lhs: GestureDecision, rhs: GestureDecision) -> Bool {
         switch (lhs, rhs) {
@@ -61,7 +67,7 @@ enum GestureDecision: Equatable {
             return true
         case (.dispatch(let left), .dispatch(let right)):
             return left == right
-        case (.replayRightClick, .replayRightClick):
+        case (.replayClick, .replayClick):
             return true
         default:
             return false

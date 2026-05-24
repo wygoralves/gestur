@@ -32,6 +32,7 @@ struct AppConfig: Codable, Equatable {
 struct TriggerConfig: Codable, Equatable {
     var button: MouseButton
     var requiredModifiers: [ModifierKey]
+    var otherButtonNumber: Int? = nil
 }
 
 enum MouseButton: String, Codable, CaseIterable, Equatable, Identifiable {
@@ -41,6 +42,8 @@ enum MouseButton: String, Codable, CaseIterable, Equatable, Identifiable {
     case altLeftDrag
 
     var id: String { rawValue }
+
+    static let selectableCases: [MouseButton] = [.right, .middle, .other]
 
     var displayName: String {
         switch self {

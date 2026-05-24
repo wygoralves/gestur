@@ -27,7 +27,7 @@
 
 Gestur is a small native macOS menu-bar utility that brings Vivaldi-style mouse gestures to the browsers you actually use.
 
-Hold the right mouse button, draw a simple direction, and release. Gestur recognizes the gesture globally, matches the frontmost browser profile, suppresses the context menu only when a real gesture happened, and dispatches the matching browser action.
+Hold your configured mouse button, draw a simple direction, and release. Gestur recognizes the gesture globally, matches the frontmost browser profile, suppresses the original click only when a real gesture happened, and dispatches the matching browser action.
 
 It is not a browser extension. Gestur runs at the macOS input layer, so gestures can work over page content, browser chrome, tab bars, address bars, and toolbar areas.
 
@@ -35,11 +35,12 @@ It is not a browser extension. Gestur runs at the macOS input layer, so gestures
 
 ### Browser gestures
 
-- Right-button drag gestures for browser actions
+- Configurable mouse-button drag gestures for browser actions
 - Default commands for new tab, close tab, previous tab, next tab, reopen closed tab, back, forward, and reload
-- Context-menu preservation when the movement does not become a gesture
+- Original-click preservation when the movement does not become a gesture
 - Browser-only mode so gestures do not interfere with normal desktop apps
 - Per-browser profiles with editable shortcuts and gesture tokens
+- Optional required modifier keys for gesture starts
 
 ### Native macOS utility
 

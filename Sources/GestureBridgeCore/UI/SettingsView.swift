@@ -163,7 +163,7 @@ private struct GeneralSettingsView: View {
 
                 StatusRow(
                     title: "Event tap",
-                    subtitle: controller.eventTapRunning ? "Listening for right-button gestures." : "Stopped until enabled and permissions are available.",
+                    subtitle: controller.eventTapRunning ? "Listening for \(configStore.current.trigger.triggerDescription) gestures." : "Stopped until enabled and permissions are available.",
                     status: controller.eventTapRunning ? "Running" : "Stopped",
                     tone: controller.eventTapRunning ? .success : .neutral
                 )
@@ -177,10 +177,8 @@ private struct GeneralSettingsView: View {
             }
 
             SettingsSection(title: "Gesture recognition") {
-                DisabledPickerRow(
-                    title: "Trigger",
-                    value: MouseButton.right.displayName,
-                    subtitle: "Right-button drag is the active trigger."
+                TriggerSettingsRow(
+                    trigger: $configStore.current.trigger
                 )
 
                 Divider()
@@ -196,7 +194,7 @@ private struct GeneralSettingsView: View {
 
                 ThresholdSlider(
                     title: "Minimum movement",
-                    subtitle: "Distance before a right-click becomes a gesture.",
+                    subtitle: "Distance before the selected trigger becomes a gesture.",
                     value: $configStore.current.recognition.minimumMovementPx,
                     range: 8...80,
                     suffix: "px"
@@ -300,6 +298,182 @@ private struct GeneralSettingsView: View {
         } catch {
             configMessage = "Import failed: \(error.localizedDescription)"
         }
+    }
+}
+
+private struct TriggerSettingsRow: View {
+    @Binding var trigger: TriggerConfig
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 16) {
+                RowText(
+                    title: "Gesture button",
+                    subtitle: "Choose which mouse button starts a gesture."
+                )
+                .frame(width: 260, alignment: .leading)
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 8) {
+                    Picker("Gesture button", selection: $trigger.button) {
+                        ForEach(MouseButton.selectableCases) { button in
+                            Label(shortLabel(for: button), systemImage: symbolName(for: button))
+                                .tag(button)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 304)
+
+                    if trigger.button == .other {
+                        CustomButtonNumberControl(
+                            value: otherButtonNumber,
+                            range: 3...32
+                        )
+                        .frame(width: 304)
+
+                        Text("Most side buttons report as 3 or 4.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 304, alignment: .trailing)
+                    }
+                }
+                .frame(width: 304, alignment: .trailing)
+            }
+
+            Divider()
+
+            HStack(alignment: .center, spacing: 16) {
+                RowText(
+                    title: "Additional modifiers",
+                    subtitle: "Only start gestures while these keys are held. Leave empty for mouse-only gestures."
+                )
+                .frame(width: 260, alignment: .leading)
+
+                Spacer()
+
+                HStack(spacing: 6) {
+                    ForEach(ModifierKey.displayOrder) { modifier in
+                        Toggle(
+                            modifier.symbol,
+                            isOn: modifierBinding(for: modifier)
+                        )
+                        .toggleStyle(.button)
+                        .help(modifier.rawValue.capitalized)
+                    }
+                }
+                .frame(width: 304, alignment: .trailing)
+            }
+        }
+    }
+
+    private var otherButtonNumber: Binding<Int> {
+        Binding<Int>(
+            get: { trigger.resolvedOtherButtonNumber },
+            set: { trigger.otherButtonNumber = max(TriggerConfig.defaultOtherButtonNumber, $0) }
+        )
+    }
+
+    private func modifierBinding(for modifier: ModifierKey) -> Binding<Bool> {
+        Binding<Bool>(
+            get: { trigger.requiredModifiers.contains(modifier) },
+            set: { enabled in
+                if enabled {
+                    if !trigger.requiredModifiers.contains(modifier) {
+                        trigger.requiredModifiers.append(modifier)
+                    }
+                } else {
+                    trigger.requiredModifiers.removeAll { $0 == modifier }
+                }
+            }
+        )
+    }
+
+    private func shortLabel(for button: MouseButton) -> String {
+        switch button {
+        case .right:
+            return "Right"
+        case .middle:
+            return "Middle"
+        case .other:
+            return "Custom"
+        case .altLeftDrag:
+            return "Alt-drag"
+        }
+    }
+
+    private func symbolName(for button: MouseButton) -> String {
+        switch button {
+        case .right:
+            return "computermouse"
+        case .middle:
+            return "scroll"
+        case .other:
+            return "circle.grid.2x2"
+        case .altLeftDrag:
+            return "cursorarrow.motionlines"
+        }
+    }
+}
+
+private struct CustomButtonNumberControl: View {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button {
+                value = max(range.lowerBound, value - 1)
+            } label: {
+                Image(systemName: "minus")
+                    .frame(width: 32, height: 30)
+            }
+            .buttonStyle(.plain)
+            .disabled(value <= range.lowerBound)
+            .help("Previous button number")
+
+            Divider()
+                .frame(height: 20)
+
+            HStack(spacing: 6) {
+                Image(systemName: "computermouse")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                Text("Button")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                Text("\(value)")
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .monospacedDigit()
+                    .frame(width: 24, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity)
+
+            Divider()
+                .frame(height: 20)
+
+            Button {
+                value = min(range.upperBound, value + 1)
+            } label: {
+                Image(systemName: "plus")
+                    .frame(width: 32, height: 30)
+            }
+            .buttonStyle(.plain)
+            .disabled(value >= range.upperBound)
+            .help("Next button number")
+        }
+        .frame(height: 32)
+        .background(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.75), lineWidth: 1)
+        )
     }
 }
 
