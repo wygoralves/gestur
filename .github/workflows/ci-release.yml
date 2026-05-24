@@ -1,0 +1,211 @@
+name: CI and Release
+
+on:
+  push:
+    branches: ["master", "main"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example 0.1.0. Leave empty to run CI only."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Validate Swift Package
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift validation
+        run: swift run GesturValidation
+
+      - name: Swift build
+        run: swift build
+
+  release:
+    name: Build GitHub Release
+    if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '') }}
+    needs: [ci]
+    runs-on: macos-15
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    outputs:
+      released_tag: ${{ steps.release_ref.outputs.tag }}
+      released_version: ${{ steps.release_ref.outputs.version }}
+    steps:
+      - name: Checkout release ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare release ref
+        id: release_ref
+        env:
+          REQUESTED_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            TAG="$GITHUB_REF_NAME"
+            VERSION="${TAG#v}"
+          else
+            VERSION="${REQUESTED_VERSION#v}"
+            TAG="v$VERSION"
+
+            if [[ -z "$VERSION" ]]; then
+              echo "A version is required for manual releases."
+              exit 1
+            fi
+
+            if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+              echo "Tag $TAG already exists."
+              exit 1
+            fi
+
+            Scripts/sync-version.sh "$VERSION" "$GITHUB_RUN_NUMBER"
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            if [[ -n "$(git status --porcelain Packaging/Info.plist)" ]]; then
+              git add Packaging/Info.plist
+              git commit -m "chore(release): $TAG [skip ci]"
+              git push origin "HEAD:$GITHUB_REF_NAME"
+            fi
+
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Preparing release $TAG"
+
+      - name: Install packaging dependencies
+        run: brew install librsvg
+
+      - name: Package release assets
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: Scripts/package-release.sh "${{ steps.release_ref.outputs.tag }}"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release_ref.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release_ref.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          ASSETS=(
+            "dist/Gestur-$RELEASE_VERSION-macOS.dmg"
+            "dist/Gestur-$RELEASE_VERSION-macOS.zip"
+            "dist/checksums.txt"
+          )
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${ASSETS[@]}" \
+              --title "$RELEASE_TAG" \
+              --generate-notes
+          fi
+
+  publish_homebrew_cask:
+    name: Publish Homebrew Cask
+    if: ${{ needs.release.outputs.released_tag != '' }}
+    needs: [release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      published: ${{ steps.tap_token.outputs.present }}
+    env:
+      HOMEBREW_TAP_REPO: wygoralves/homebrew-tap
+    steps:
+      - name: Detect Homebrew tap token
+        id: tap_token
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [[ -n "$HOMEBREW_TAP_TOKEN" ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout released tag
+        if: steps.tap_token.outputs.present == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.release.outputs.released_tag }}
+
+      - uses: actions/setup-node@v4
+        if: steps.tap_token.outputs.present == 'true'
+        with:
+          node-version: 20
+
+      - name: Checkout tap repository
+        if: steps.tap_token.outputs.present == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.HOMEBREW_TAP_REPO }}
+          path: homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Generate Gestur cask
+        if: steps.tap_token.outputs.present == 'true'
+        run: |
+          mkdir -p homebrew-tap/Casks
+          node Scripts/generate-homebrew-cask.mjs "${{ needs.release.outputs.released_tag }}" --output homebrew-tap/Casks/gestur.rb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip cask publish without tap token
+        if: steps.tap_token.outputs.present != 'true'
+        run: echo "HOMEBREW_TAP_TOKEN not configured; skipping Homebrew cask publish."
+
+      - name: Commit and push cask update
+        if: steps.tap_token.outputs.present == 'true'
+        working-directory: homebrew-tap
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "Tap repository already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/gestur.rb
+          git commit -m "Update gestur cask for ${{ needs.release.outputs.released_tag }}"
+          git push origin HEAD:main
+
+  homebrew_smoke:
+    name: Homebrew Install Smoke
+    if: ${{ needs.publish_homebrew_cask.outputs.published == 'true' }}
+    needs: [release, publish_homebrew_cask]
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Install Gestur from tap
+        run: |
+          brew tap wygoralves/tap
+          brew install --cask wygoralves/tap/gestur
+          test -x /Applications/Gestur.app/Contents/MacOS/Gestur
+          file /Applications/Gestur.app/Contents/MacOS/Gestur

@@ -21,6 +21,7 @@
   <img src="https://img.shields.io/badge/swift-5.9-orange.svg" alt="Swift 5.9" />
   <img src="https://img.shields.io/badge/app-menu--bar-blue.svg" alt="Menu bar app" />
   <img src="https://img.shields.io/badge/privacy-local--first-green.svg" alt="Local first" />
+  <a href="https://github.com/wygoralves/gestur/releases/latest"><img src="https://img.shields.io/github/v/release/wygoralves/gestur?label=download&color=blue" alt="Latest Release" /></a>
 </p>
 
 ---
@@ -85,6 +86,30 @@ Unknown apps pass through untouched by default. You can add custom app profiles 
 Gestures use direction tokens: `U` up, `D` down, `L` left, and `R` right. Use the record button in a gesture row to draw a gesture instead of typing the token manually.
 
 ## Getting Started
+
+### Install on macOS
+
+```bash
+brew install --cask wygoralves/tap/gestur
+```
+
+Homebrew is the primary macOS install path for prebuilt Gestur releases. The cask installs the release DMG from GitHub and applies a best-effort quarantine removal step after install.
+
+Gestur is not currently signed and notarized with Apple, so Homebrew reduces Gatekeeper friction but does not eliminate it. macOS may still require a manual first-launch confirmation depending on system policy. If that happens, use Finder's Open flow or download the DMG directly from [GitHub Releases](https://github.com/wygoralves/gestur/releases/latest).
+
+If Gatekeeper blocks a direct DMG install, use these commands instead of disabling Gatekeeper globally:
+
+```bash
+# If macOS blocks the downloaded DMG itself
+xattr -d com.apple.quarantine ~/Downloads/Gestur*.dmg
+open ~/Downloads/Gestur*.dmg
+
+# After dragging Gestur.app into /Applications, if first launch is blocked
+xattr -dr com.apple.quarantine /Applications/Gestur.app
+open /Applications/Gestur.app
+```
+
+Maintainers can find the tap/release automation setup in [docs/homebrew-distribution.md](./docs/homebrew-distribution.md).
 
 ### Prerequisites
 
@@ -184,9 +209,21 @@ swift build                 # compile all products
 swift run Gestur            # run the menu-bar app
 swift run GesturValidation  # run the validation suite
 Scripts/build-app.sh        # build dist/Gestur.app
+Scripts/package-release.sh v0.1.0  # build local release DMG/zip assets
 ```
 
 The validation runner exists because this project intentionally avoids a heavier test harness. It currently covers gesture recognition, profile matching, shortcut key mapping, default-config migration, and config import/export.
+
+### Release
+
+Releases are built by GitHub Actions from either a pushed version tag or the manual `CI and Release` workflow.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow builds `Gestur.app`, packages a DMG and zip archive, uploads them to GitHub Releases, and publishes `wygoralves/tap/gestur` when the `HOMEBREW_TAP_TOKEN` repository secret is configured.
 
 ## Architecture
 
